@@ -64,17 +64,18 @@ def snmp_get(host, oid):
                               lexicographicMode=False):
 
         if errorIndication:
-            print(errorIndication)
+            logging.error(errorIndication)
             break
 
         elif errorStatus:
-            print('%s at %s' % (errorStatus.prettyPrint(),
+            logging.error('%s at %s' % (errorStatus.prettyPrint(),
                                 errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
             break
 
         else:
             for varBind in varBinds:
-                print(' = '.join([x.prettyPrint() for x in varBind]))
+                #print(' = '.join([x.prettyPrint() for x in varBind]))
+                return varBind
 
 def main():
     load_dotenv()
@@ -112,8 +113,9 @@ def main():
         logging.info(f'Router: {ip}, Links: {ct}')
 
         # Get SNMP info from router
-        snmp_name = '.1.3.6.1.2.1.2.2.1.2.1'
-        snmp_get(ip, snmp_name)
+        snmp_host_name = '1.3.6.1.2.1.1.5.0'
+        host_name = snmp_get(ip, snmp_host_name)[1]
+        print(f"host is {host_name}")
 
         
 
