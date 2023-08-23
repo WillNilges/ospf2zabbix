@@ -110,14 +110,22 @@ def main():
         if ct < link_floor:
             continue
 
-        logging.info(f'Router: {ip}, Links: {ct}')
-
         # Get SNMP info from router
         snmp_host_name = '1.3.6.1.2.1.1.5.0'
-        host_name = snmp_get(ip, snmp_host_name)[1]
-        print(f"host is {host_name}")
+        host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
 
-        
+        logging.info(f'Host: {host_name}, Router: {ip}, Links: {ct}')
+
+        # Check if Zabbix already knows about it
+        maybe_host = zapi.host.get(filter={"host": host_name})
+
+        # Skip it if it already exists in zabbix
+        # TODO: Add a "force" option that could overwrite an existing
+        # host?
+        if len(maybe_host) > 0:
+            logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
+            continue
+
 
 if __name__ == '__main__':
     main()
