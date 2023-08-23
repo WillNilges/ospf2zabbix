@@ -126,6 +126,41 @@ def main():
             logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
             continue
 
+        #print(zapi.hostgroup.get(filter={'name': 'OmniTik'}))
+        #print(zapi.template.get(filter={'name': 'Network Generic Device by SNMP'}))
+
+        omnitik_hostgroup_groupid = zapi.hostgroup.get(
+            filter={'name': 'OmniTik'}
+        )[0].get('groupid')
+
+        omnitik_template_templateid = int(zapi.template.get(
+            filter={'name': 'Network Generic Device by SNMP'}
+        )[0].get('templateid'))
+
+        new_snmp_host = zapi.host.create(
+            host= host_name,
+            interfaces=[{
+                "type": 2,
+                "main": 1,
+                "useip": 1,
+                "ip": ip,
+                "dns": "",
+                "port": 161,
+                "details": {
+                    "version": 2,
+                    "bulk": 1,
+                    "community": "public",
+                },
+            }],
+            groups=[{
+                "groupid": omnitik_hostgroup_groupid,
+            }],
+            templates=[{
+                'templateid': omnitik_template_templateid,
+            }]
+        )
+        logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
+
 
 if __name__ == '__main__':
     main()
