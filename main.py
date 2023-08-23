@@ -17,18 +17,22 @@ import requests
 #           Set up monitoring template, add a Slack alert thingy
 # Profit
 
+# FIXME: This doesn't seem to exactly match up with what the explorer says.
+# probably need to sync up with andrew.
 def extract_routes_count(data):
     routes_count = {}
 
     areas = data.get('areas', {})
     for area_key, area_value in areas.items():
         routers = area_value.get('routers', {})
-        for router_key, router_value in routers.items():
+        for router_ip, router_value in routers.items():
             links = router_value.get('links', {})
             if links.get('router') == None:
                 continue
             link_ct = len(links.get('router'))
-            print(f"Router: {router_key}, Links: {link_ct}")
+            #print(f"Router: {router_ip}, Links: {link_ct}")
+            routes_count[router_ip] = link_ct
+    return routes_count
 
 def fetch_ospf_json(url):
     response = requests.get(url)
@@ -39,7 +43,8 @@ def fetch_ospf_json(url):
         return None
 
 def main():
-    # URL of the OSPF data 
+    # URL of OSPF data 
+    # TODO: Config file or whatever _just_ in case
     url = "http://api.andrew.mesh.nycmesh.net/api/v1/ospf/linkdb"
 
     # Fetch JSON data from the URL
@@ -51,7 +56,9 @@ def main():
         return
 
     # Call the function to extract routes count
-    extract_routes_count(json_data)
+    route_dict = extract_routes_count(json_data)
+    for ip, ct in route_dict.items():
+        print(f"Router: {ip}, Links: {ct}")
 
 if __name__ == '__main__':
     main()
