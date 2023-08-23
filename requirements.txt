@@ -1,2 +1,5 @@
 requests
 pyzabbix
+python-dotenv
+pyasn1==0.4.8
+pysnmp
