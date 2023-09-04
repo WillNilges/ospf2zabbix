@@ -3,6 +3,7 @@ import logging
 from dotenv import load_dotenv
 import json
 import requests
+import argparse
 from pyzabbix import ZabbixAPI
 from pysnmp.hlapi import *
 
@@ -56,12 +57,12 @@ def snmp_get(host, oid):
          errorStatus,
          errorIndex,
          varBinds) in getCmd(SnmpEngine(),
-                              CommunityData('public', mpModel=0),
-                              UdpTransportTarget((host, 161)),
-                              ContextData(),
-                              ObjectType(ObjectIdentity(oid)),
-                              lookupMib=False,
-                              lexicographicMode=False):
+                             CommunityData('public', mpModel=0),
+                             UdpTransportTarget((host, 161)),
+                             ContextData(),
+                             ObjectType(ObjectIdentity(oid)),
+                             lookupMib=False,
+                             lexicographicMode=False):
 
         if errorIndication:
             logging.error(errorIndication)
@@ -74,7 +75,6 @@ def snmp_get(host, oid):
 
         else:
             for varBind in varBinds:
-                #print(' = '.join([x.prettyPrint() for x in varBind]))
                 return varBind
 
 def main():
@@ -105,61 +105,64 @@ def main():
     zapi.login(zabbix_uname, zabbix_pword)
     logging.info(f"Logged into zabbix @ {zabbix_url}")
 
-    for ip, ct in route_dict.items():
-        # Do nothing if the device does not have enough links
-        if ct < link_floor:
-            continue
+    parser = argparse.ArgumentParser(description='Automation and management tools for NYCMesh Zabbix')
+    parser.add_argument('--enroll', action='store_true', help='Enroll popular routers into Zabbix')
+    parser.add_argument('--silence-alerts', action='store_true', help='Silence useless alerts')
+    args = parser.parse_args()
 
-        # Get SNMP info from router
-        snmp_host_name = '1.3.6.1.2.1.1.5.0'
-        host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
+    if args.enroll:
+        for ip, ct in route_dict.items():
+            # Do nothing if the device does not have enough links
+            if ct < link_floor:
+                continue
 
-        logging.info(f'Host: {host_name}, Router: {ip}, Links: {ct}')
+            # Get SNMP info from router
+            snmp_host_name = '1.3.6.1.2.1.1.5.0'
+            host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
 
-        # Check if Zabbix already knows about it
-        maybe_host = zapi.host.get(filter={"host": host_name})
+            logging.info(f'Host: {host_name}, Router: {ip}, Links: {ct}')
 
-        # Skip it if it already exists in zabbix
-        # TODO: Add a "force" option that could overwrite an existing
-        # host?
-        if len(maybe_host) > 0:
-            logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
-            continue
+            # Check if Zabbix already knows about it
+            maybe_host = zapi.host.get(filter={"host": host_name})
 
-        #print(zapi.hostgroup.get(filter={'name': 'OmniTik'}))
-        #print(zapi.template.get(filter={'name': 'Network Generic Device by SNMP'}))
+            # Skip it if it already exists in zabbix
+            # TODO: Add a "force" option that could overwrite an existing
+            # host?
+            if len(maybe_host) > 0:
+                logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
+                continue
 
-        omnitik_hostgroup_groupid = zapi.hostgroup.get(
-            filter={'name': 'OmniTik'}
-        )[0].get('groupid')
+            omnitik_hostgroup_groupid = zapi.hostgroup.get(
+                filter={'name': 'OmniTik'}
+            )[0].get('groupid')
 
-        omnitik_template_templateid = int(zapi.template.get(
-            filter={'name': 'Network Generic Device by SNMP'}
-        )[0].get('templateid'))
+            omnitik_template_templateid = int(zapi.template.get(
+                filter={'name': 'Network Generic Device by SNMP'}
+            )[0].get('templateid'))
 
-        new_snmp_host = zapi.host.create(
-            host= host_name,
-            interfaces=[{
-                "type": 2,
-                "main": 1,
-                "useip": 1,
-                "ip": ip,
-                "dns": "",
-                "port": 161,
-                "details": {
-                    "version": 2,
-                    "bulk": 1,
-                    "community": "public",
-                },
-            }],
-            groups=[{
-                "groupid": omnitik_hostgroup_groupid,
-            }],
-            templates=[{
-                'templateid': omnitik_template_templateid,
-            }]
-        )
-        logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
+            new_snmp_host = zapi.host.create(
+                host= host_name,
+                interfaces=[{
+                    "type": 2,
+                    "main": 1,
+                    "useip": 1,
+                    "ip": ip,
+                    "dns": "",
+                    "port": 161,
+                    "details": {
+                        "version": 2,
+                        "bulk": 1,
+                        "community": "public",
+                    },
+                }],
+                groups=[{
+                    "groupid": omnitik_hostgroup_groupid,
+                }],
+                templates=[{
+                    'templateid': omnitik_template_templateid,
+                }]
+            )
+            logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
 
 
 if __name__ == '__main__':
