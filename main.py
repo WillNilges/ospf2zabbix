@@ -77,16 +77,7 @@ def snmp_get(host, oid):
             for varBind in varBinds:
                 return varBind
 
-def main():
-    load_dotenv()
-    ospf_api_url = os.getenv('P2Z_OSPF_API_URL')
-    link_floor = int(os.getenv('P2Z_LINK_FLOOR'))
-    zabbix_url = os.getenv('P2Z_ZABBIX_URL')
-    zabbix_uname = os.getenv('P2Z_ZABBIX_UNAME')
-    zabbix_pword = os.getenv('P2Z_ZABBIX_PWORD')
-
-    logging.basicConfig(level=logging.INFO)
-
+def enroll_popular_devices(ospf_api_url, link_floor, zapi):
     # Fetch JSON data from the URL
     logging.info("Getting OSPF Data...")
     try:
@@ -99,6 +90,80 @@ def main():
     # Get the number of links that each node has
     route_dict = extract_routes_count(json_data)
 
+    for ip, ct in route_dict.items():
+        # Do nothing if the device does not have enough links
+        if ct < link_floor:
+            continue
+
+        # Get SNMP info from router
+        snmp_host_name = '1.3.6.1.2.1.1.5.0'
+        host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
+
+        logging.info(f'Host: {host_name}, Router: {ip}, Links: {ct}')
+
+        # Check if Zabbix already knows about it
+        maybe_host = zapi.host.get(filter={"host": host_name})
+
+        # Skip it if it already exists in zabbix
+        # TODO: Add a "force" option that could overwrite an existing
+        # host?
+        if len(maybe_host) > 0:
+            logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
+            continue
+
+        omnitik_hostgroup_groupid = zapi.hostgroup.get(
+            filter={'name': 'OmniTik'}
+        )[0].get('groupid')
+
+        omnitik_template_templateid = int(zapi.template.get(
+            filter={'name': 'Network Generic Device by SNMP'}
+        )[0].get('templateid'))
+
+        new_snmp_host = zapi.host.create(
+            host= host_name,
+            interfaces=[{
+                "type": 2,
+                "main": 1,
+                "useip": 1,
+                "ip": ip,
+                "dns": "",
+                "port": 161,
+                "details": {
+                    "version": 2,
+                    "bulk": 1,
+                    "community": "public",
+                },
+            }],
+            groups=[{
+                "groupid": omnitik_hostgroup_groupid,
+            }],
+            templates=[{
+                'templateid': omnitik_template_templateid,
+            }]
+        )
+        logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
+
+def silence_alerts(zapi):
+    logging.info("Getting events...")
+    # silenced_interfaces = ['wlan0', 'wlan1', 'wlan2', 'wlan3', 'wlan4']
+    events = zapi.event.get(tags=[{"tag": "interface", "value":"wlan2", "operator": 0}], limit=10) #interface: wlan2
+    logging.info(events)
+    for event in events:
+        #print(event)
+        zapi.event.acknowledge(eventids=event['eventid'], action=32, suppress_until=0)
+        suppressed_event = zapi.event.get(eventids=event['eventid'])
+        print(suppressed_event)
+
+def main():
+    load_dotenv()
+    ospf_api_url = os.getenv('P2Z_OSPF_API_URL')
+    link_floor = int(os.getenv('P2Z_LINK_FLOOR'))
+    zabbix_url = os.getenv('P2Z_ZABBIX_URL')
+    zabbix_uname = os.getenv('P2Z_ZABBIX_UNAME')
+    zabbix_pword = os.getenv('P2Z_ZABBIX_PWORD')
+
+    logging.basicConfig(level=logging.INFO)
+
     # Login to zabbix
     logging.info("Logging into zabbix...")
     zapi = ZabbixAPI(zabbix_url)
@@ -107,63 +172,13 @@ def main():
 
     parser = argparse.ArgumentParser(description='Automation and management tools for NYCMesh Zabbix')
     parser.add_argument('--enroll', action='store_true', help='Enroll popular routers into Zabbix')
-    parser.add_argument('--silence-alerts', action='store_true', help='Silence useless alerts')
+    parser.add_argument('--silence_alerts', action='store_true', help='Silence useless alerts')
     args = parser.parse_args()
 
     if args.enroll:
-        for ip, ct in route_dict.items():
-            # Do nothing if the device does not have enough links
-            if ct < link_floor:
-                continue
-
-            # Get SNMP info from router
-            snmp_host_name = '1.3.6.1.2.1.1.5.0'
-            host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
-
-            logging.info(f'Host: {host_name}, Router: {ip}, Links: {ct}')
-
-            # Check if Zabbix already knows about it
-            maybe_host = zapi.host.get(filter={"host": host_name})
-
-            # Skip it if it already exists in zabbix
-            # TODO: Add a "force" option that could overwrite an existing
-            # host?
-            if len(maybe_host) > 0:
-                logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
-                continue
-
-            omnitik_hostgroup_groupid = zapi.hostgroup.get(
-                filter={'name': 'OmniTik'}
-            )[0].get('groupid')
-
-            omnitik_template_templateid = int(zapi.template.get(
-                filter={'name': 'Network Generic Device by SNMP'}
-            )[0].get('templateid'))
-
-            new_snmp_host = zapi.host.create(
-                host= host_name,
-                interfaces=[{
-                    "type": 2,
-                    "main": 1,
-                    "useip": 1,
-                    "ip": ip,
-                    "dns": "",
-                    "port": 161,
-                    "details": {
-                        "version": 2,
-                        "bulk": 1,
-                        "community": "public",
-                    },
-                }],
-                groups=[{
-                    "groupid": omnitik_hostgroup_groupid,
-                }],
-                templates=[{
-                    'templateid': omnitik_template_templateid,
-                }]
-            )
-            logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
-
+        enroll_popular_devices(ospf_api_url, link_floor, zapi)
+    elif args.silence_alerts:
+        silence_alerts(zapi)
 
 if __name__ == '__main__':
     main()
