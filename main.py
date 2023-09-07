@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import os
 import logging
+import argparse
 from dotenv import load_dotenv
 import json
 import requests
-import argparse
+import socket
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 from pysnmp.hlapi import *
 
@@ -14,6 +15,15 @@ from pysnmp.hlapi import *
 
 # FIXME: I need to get my terminology straight. Is it a "link?" is it a "route?"
 # Does the API call it something different from what it actually is?
+
+
+# Custom validation function to check if the provided argument is a valid IPv4 address
+def is_valid_ipv4(ip):
+    try:
+        socket.inet_pton(socket.AF_INET, ip)
+        return True
+    except socket.error:
+        return False
 
 
 # FIXME: This doesn't seem to exactly match up with what the explorer says.
@@ -71,6 +81,90 @@ def snmp_get(host, oid):
                 return varBind
 
 
+# Get SNMP info from router
+def snmp_get_hostname(ip):
+    snmp_host_name = "1.3.6.1.2.1.1.5.0"
+    return snmp_get(ip, snmp_host_name)[1].prettyPrint()
+
+
+# Get the hostgroup, and create it if it doesn't exist
+def get_or_create_hostgroup(zapi):
+    nycmesh_node_hostgroup = "NYCMeshNodes"
+    try:
+        groupid = zapi.hostgroup.get(filter={"name": nycmesh_node_hostgroup})[0].get(
+            "groupid"
+        )
+        return groupid
+    except (ZabbixAPIException, IndexError):
+        logging.warn(f"Did not find host group. Creating {nycmesh_node_hostgroup}")
+        groupid = zapi.hostgroup.create(name=nycmesh_node_hostgroup)["groupids"][0]
+        return groupid
+
+
+# Get the templateID for the generic SNMP device
+def get_generic_snmp_templateid(zapi):
+    return int(
+        zapi.template.get(filter={"name": "Network Generic Device by SNMP"})[0].get(
+            "templateid"
+        )
+    )
+
+# Logic that makes API call to zabbix to enroll a single host
+def zabbix_enroll_node(zapi, ip, host_name, omnitik_groupid, omnitik_templateid):
+    # Check if Zabbix already knows about it
+    maybe_host = zapi.host.get(filter={"host": host_name})
+
+    # Skip it if it already exists in zabbix
+    # TODO: Add a "force" option that could overwrite an existing
+    # host?
+    if len(maybe_host) > 0:
+        logging.warning(f"{host_name} ({ip}) already exists. Skipping.")
+        return
+
+    new_snmp_host = zapi.host.create(
+        host=host_name,
+        interfaces=[
+            {
+                "type": 2,
+                "main": 1,
+                "useip": 1,
+                "ip": ip,
+                "dns": "",
+                "port": 161,
+                "details": {
+                    "version": 2,
+                    "bulk": 1,
+                    "community": "public",
+                },
+            }
+        ],
+        groups=[
+            {
+                "groupid": omnitik_groupid,
+            }
+        ],
+        templates=[
+            {
+                "templateid": omnitik_templateid,
+            }
+        ],
+    )
+    hostid = new_snmp_host["hostids"][0]
+    return hostid
+
+
+# Enroll a single device in zabbix
+def enroll_device(zapi, ip):
+    # Get groupid and templateid in preparation
+    omnitik_groupid = get_or_create_hostgroup(zapi)
+    omnitik_templateid = get_generic_snmp_templateid(zapi)
+    host_name = snmp_get_hostname(ip)
+    hostid = zabbix_enroll_node(
+        zapi, ip, host_name, omnitik_groupid, omnitik_templateid
+    )
+    logging.info(f"{host_name} ({ip}) enrolled as hostid {hostid}")
+
+
 # Overview:
 # Fetch raw OSPF JSON
 # Turn it into a huge dict of IPs and link counts
@@ -96,76 +190,22 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
     # Get the number of links that each node has
     route_dict = extract_routes_count(json_data)
 
+    # Get groupid and templateid in preparation
+    omnitik_groupid = get_or_create_hostgroup(zapi)
+    omnitik_templateid = get_generic_snmp_templateid(zapi)
+
     for ip, ct in route_dict.items():
         # Do nothing if the device does not have enough links
         if ct < link_floor:
             continue
 
-        # Get SNMP info from router
-        snmp_host_name = "1.3.6.1.2.1.1.5.0"
-        host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
+        host_name = snmp_get_hostname(ip)
 
         logging.info(f"Host: {host_name}, Router: {ip}, Links: {ct}")
-
-        # Check if Zabbix already knows about it
-        maybe_host = zapi.host.get(filter={"host": host_name})
-
-        # Skip it if it already exists in zabbix
-        # TODO: Add a "force" option that could overwrite an existing
-        # host?
-        if len(maybe_host) > 0:
-            logging.warning(f"{host_name} ({ip}) already exists. Skipping.")
-            continue
-
-        # Get the hostgroup, and create it if it doesn't exist
-        nycmesh_node_hostgroup = "NYCMeshNodes"
-        for i in range(2):
-            try:
-                omnitik_hostgroup_groupid = zapi.hostgroup.get(
-                    filter={"name": nycmesh_node_hostgroup}
-                )[0].get("groupid")
-                break
-            except (ZabbixAPIException, IndexError):
-                logging.warn(
-                    f"Did not find host group. Creating {nycmesh_node_hostgroup}"
-                )
-                zapi.hostgroup.create(name=nycmesh_node_hostgroup)
-
-        omnitik_template_templateid = int(
-            zapi.template.get(filter={"name": "Network Generic Device by SNMP"})[0].get(
-                "templateid"
-            )
+        hostid = zabbix_enroll_node(
+            zapi, ip, host_name, omnitik_groupid, omnitik_templateid
         )
-
-        new_snmp_host = zapi.host.create(
-            host=host_name,
-            interfaces=[
-                {
-                    "type": 2,
-                    "main": 1,
-                    "useip": 1,
-                    "ip": ip,
-                    "dns": "",
-                    "port": 161,
-                    "details": {
-                        "version": 2,
-                        "bulk": 1,
-                        "community": "public",
-                    },
-                }
-            ],
-            groups=[
-                {
-                    "groupid": omnitik_hostgroup_groupid,
-                }
-            ],
-            templates=[
-                {
-                    "templateid": omnitik_template_templateid,
-                }
-            ],
-        )
-        logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
+        logging.info(f"{host_name} enrolled as hostid {hostid}")
 
 
 def main():
@@ -188,15 +228,25 @@ def main():
         description="Automation and management tools for NYCMesh Zabbix"
     )
     parser.add_argument(
-        "--enroll", action="store_true", help="Enroll popular routers into Zabbix"
+        "--popular", action="store_true", help="Enroll popular routers into Zabbix"
+    )
+    parser.add_argument(
+        "--enroll",
+        required=True,
+        metavar="ip",
+        help="Enroll a specific node into zabbix",
     )
     parser.add_argument(
         "--silence_alerts", action="store_true", help="Silence useless alerts"
     )
     args = parser.parse_args()
 
-    if args.enroll:
+    if args.popular:
         enroll_popular_devices(zapi, ospf_api_url, link_floor)
+    elif args.enroll:
+        if not is_valid_ipv4(args.enroll):
+            raise ValueError("Must pass a valid IPv4 address!")
+        enroll_device(zapi, args.enroll)
     elif args.silence_alerts:
         raise NotImplementedError
 
