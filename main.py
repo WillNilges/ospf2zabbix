@@ -150,52 +150,6 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
         )
         logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
 
-def silence_alerts(zapi):
-    #logging.info("Getting events...")
-    ## silenced_interfaces = ['wlan0', 'wlan1', 'wlan2', 'wlan3', 'wlan4']
-    #events = zapi.event.get(tags=[{"tag": "interface", "value":"wlan2", "operator": 0}], limit=10) #interface: wlan2
-    #logging.info(events)
-    #for event in events:
-    #    #print(event)
-    #    zapi.event.acknowledge(eventids=event['eventid'], action=32, suppress_until=0)
-    #    suppressed_event = zapi.event.get(eventids=event['eventid'])
-    #    print(suppressed_event)
-
-    raise NotImplementedError
-
-    ## Host tag and maintenance window parameters
-    #tag_name = 'interface'
-    #tag_value = 'wlan2'
-    #host_group_id = 'OmniTik'
-    #maintenance_window_name = 'Suppress Interface:wlan2'
-    #maintenance_window_duration = 3600  # Duration in seconds (1 hour)
-
-    ## Find hosts with the specified tag
-    #hosts = zapi.host.get(output=['hostid'], selectTags='extend', filter={'tags': [{'tag': tag_name, 'value': tag_value}]})
-
-    ## Create a maintenance window for each host
-    #for host in hosts:
-    #    host_id = host['hostid']
-    #    maintenance_window = {
-    #        'name': maintenance_window_name,
-    #        'active_since': '0',
-    #        'active_till': 2147483647, # $ date -d '2037-03-22 22:00:05 EDT' +%s
-    #        'hostids': [host_id],
-    #        'timeperiods': [{
-    #            'timeperiod_type': 0,
-    #            'start_date': 0,
-    #            'period': 0,
-    #        }],
-    #        'tags': [{'tag': tag_name, 'value': tag_value}],
-    #    }
-    #    result = zapi.maintenance.create(**maintenance_window)
-    #    if 'maintenanceids' in result:
-    #        print(f"Maintenance window created for host {host_id}")
-    #    else:
-    #        print(f"Failed to create maintenance window for host {host_id}")
-
-
-
 def main():
     load_dotenv()
     ospf_api_url = os.getenv('P2Z_OSPF_API_URL')
@@ -220,7 +174,7 @@ def main():
     if args.enroll:
         enroll_popular_devices(zapi, ospf_api_url, link_floor)
     elif args.silence_alerts:
-        silence_alerts(zapi)
+        raise NotImplementedError
 
 if __name__ == '__main__':
     main()
