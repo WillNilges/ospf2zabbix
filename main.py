@@ -14,55 +14,61 @@ from pysnmp.hlapi import *
 # FIXME: I need to get my terminology straight. Is it a "link?" is it a "route?"
 # Does the API call it something different from what it actually is?
 
+
 # FIXME: This doesn't seem to exactly match up with what the explorer says.
 # probably need to sync up with andrew and see what counts as a 'route'
 def extract_routes_count(data):
     routes_count = {}
 
-    areas = data.get('areas', {})
+    areas = data.get("areas", {})
     for area_key, area_value in areas.items():
-        routers = area_value.get('routers', {})
+        routers = area_value.get("routers", {})
         for router_ip, router_info in routers.items():
-            links = router_info.get('links', {})
-            if links.get('router') == None:
+            links = router_info.get("links", {})
+            if links.get("router") == None:
                 continue
-            link_ct = len(links.get('router'))
+            link_ct = len(links.get("router"))
             routes_count[router_ip] = link_ct
     return routes_count
+
 
 def fetch_ospf_json(url):
     response = requests.get(url)
     if response.status_code == 200:
         return response.json()
     else:
-        print(f'Failed to fetch data. Status code: {response.status_code}')
+        print(f"Failed to fetch data. Status code: {response.status_code}")
         return None
 
+
 def snmp_get(host, oid):
-
-    for (errorIndication,
-         errorStatus,
-         errorIndex,
-         varBinds) in getCmd(SnmpEngine(),
-                             CommunityData('public', mpModel=0),
-                             UdpTransportTarget((host, 161)),
-                             ContextData(),
-                             ObjectType(ObjectIdentity(oid)),
-                             lookupMib=False,
-                             lexicographicMode=False):
-
+    for errorIndication, errorStatus, errorIndex, varBinds in getCmd(
+        SnmpEngine(),
+        CommunityData("public", mpModel=0),
+        UdpTransportTarget((host, 161)),
+        ContextData(),
+        ObjectType(ObjectIdentity(oid)),
+        lookupMib=False,
+        lexicographicMode=False,
+    ):
         if errorIndication:
             logging.error(errorIndication)
             break
 
         elif errorStatus:
-            logging.error('%s at %s' % (errorStatus.prettyPrint(),
-                                errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
+            logging.error(
+                "%s at %s"
+                % (
+                    errorStatus.prettyPrint(),
+                    errorIndex and varBinds[int(errorIndex) - 1][0] or "?",
+                )
+            )
             break
 
         else:
             for varBind in varBinds:
                 return varBind
+
 
 # Overview:
 # Fetch raw OSPF JSON
@@ -82,7 +88,7 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
     try:
         json_data = fetch_ospf_json(ospf_api_url)
     except Exception as err:
-        print('An exception occured fetching OSPF data!')
+        print("An exception occured fetching OSPF data!")
         print(err)
         return
 
@@ -95,10 +101,10 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
             continue
 
         # Get SNMP info from router
-        snmp_host_name = '1.3.6.1.2.1.1.5.0'
+        snmp_host_name = "1.3.6.1.2.1.1.5.0"
         host_name = snmp_get(ip, snmp_host_name)[1].prettyPrint()
 
-        logging.info(f'Host: {host_name}, Router: {ip}, Links: {ct}')
+        logging.info(f"Host: {host_name}, Router: {ip}, Links: {ct}")
 
         # Check if Zabbix already knows about it
         maybe_host = zapi.host.get(filter={"host": host_name})
@@ -107,7 +113,7 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
         # TODO: Add a "force" option that could overwrite an existing
         # host?
         if len(maybe_host) > 0:
-            logging.warning(f'{host_name} ({ip}) already exists. Skipping.')
+            logging.warning(f"{host_name} ({ip}) already exists. Skipping.")
             continue
 
         # Get the hostgroup, and create it if it doesn't exist
@@ -115,48 +121,59 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
         for i in range(2):
             try:
                 omnitik_hostgroup_groupid = zapi.hostgroup.get(
-                    filter={'name': nycmesh_node_hostgroup}
-                )[0].get('groupid')
+                    filter={"name": nycmesh_node_hostgroup}
+                )[0].get("groupid")
                 break
             except (ZabbixAPIException, IndexError):
-                logging.warn(f"Did not find host group. Creating {nycmesh_node_hostgroup}")
+                logging.warn(
+                    f"Did not find host group. Creating {nycmesh_node_hostgroup}"
+                )
                 zapi.hostgroup.create(name=nycmesh_node_hostgroup)
 
-        omnitik_template_templateid = int(zapi.template.get(
-            filter={'name': 'Network Generic Device by SNMP'}
-        )[0].get('templateid'))
+        omnitik_template_templateid = int(
+            zapi.template.get(filter={"name": "Network Generic Device by SNMP"})[0].get(
+                "templateid"
+            )
+        )
 
         new_snmp_host = zapi.host.create(
-            host= host_name,
-            interfaces=[{
-                "type": 2,
-                "main": 1,
-                "useip": 1,
-                "ip": ip,
-                "dns": "",
-                "port": 161,
-                "details": {
-                    "version": 2,
-                    "bulk": 1,
-                    "community": "public",
-                },
-            }],
-            groups=[{
-                "groupid": omnitik_hostgroup_groupid,
-            }],
-            templates=[{
-                'templateid': omnitik_template_templateid,
-            }]
+            host=host_name,
+            interfaces=[
+                {
+                    "type": 2,
+                    "main": 1,
+                    "useip": 1,
+                    "ip": ip,
+                    "dns": "",
+                    "port": 161,
+                    "details": {
+                        "version": 2,
+                        "bulk": 1,
+                        "community": "public",
+                    },
+                }
+            ],
+            groups=[
+                {
+                    "groupid": omnitik_hostgroup_groupid,
+                }
+            ],
+            templates=[
+                {
+                    "templateid": omnitik_template_templateid,
+                }
+            ],
         )
         logging.info(f"Created as hostid {new_snmp_host['hostids'][0]}")
 
+
 def main():
     load_dotenv()
-    ospf_api_url = os.getenv('P2Z_OSPF_API_URL')
-    link_floor = int(os.getenv('P2Z_LINK_FLOOR'))
-    zabbix_url = os.getenv('P2Z_ZABBIX_URL')
-    zabbix_uname = os.getenv('P2Z_ZABBIX_UNAME')
-    zabbix_pword = os.getenv('P2Z_ZABBIX_PWORD')
+    ospf_api_url = os.getenv("P2Z_OSPF_API_URL")
+    link_floor = int(os.getenv("P2Z_LINK_FLOOR"))
+    zabbix_url = os.getenv("P2Z_ZABBIX_URL")
+    zabbix_uname = os.getenv("P2Z_ZABBIX_UNAME")
+    zabbix_pword = os.getenv("P2Z_ZABBIX_PWORD")
 
     logging.basicConfig(level=logging.INFO)
 
@@ -166,9 +183,15 @@ def main():
     zapi.login(zabbix_uname, zabbix_pword)
     logging.info(f"Logged into zabbix @ {zabbix_url}")
 
-    parser = argparse.ArgumentParser(description='Automation and management tools for NYCMesh Zabbix')
-    parser.add_argument('--enroll', action='store_true', help='Enroll popular routers into Zabbix')
-    parser.add_argument('--silence_alerts', action='store_true', help='Silence useless alerts')
+    parser = argparse.ArgumentParser(
+        description="Automation and management tools for NYCMesh Zabbix"
+    )
+    parser.add_argument(
+        "--enroll", action="store_true", help="Enroll popular routers into Zabbix"
+    )
+    parser.add_argument(
+        "--silence_alerts", action="store_true", help="Silence useless alerts"
+    )
     args = parser.parse_args()
 
     if args.enroll:
@@ -176,5 +199,6 @@ def main():
     elif args.silence_alerts:
         raise NotImplementedError
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
