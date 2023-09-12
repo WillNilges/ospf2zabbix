@@ -109,6 +109,7 @@ def get_generic_snmp_templateid(zapi):
         )
     )
 
+
 # Logic that makes API call to zabbix to enroll a single host
 def zabbix_enroll_node(zapi, ip, host_name, omnitik_groupid, omnitik_templateid):
     # Check if Zabbix already knows about it
@@ -162,7 +163,8 @@ def enroll_device(zapi, ip):
     hostid = zabbix_enroll_node(
         zapi, ip, host_name, omnitik_groupid, omnitik_templateid
     )
-    logging.info(f"{host_name} ({ip}) enrolled as hostid {hostid}")
+    if hostid is not None:
+        logging.info(f"{host_name} ({ip}) enrolled as hostid {hostid}")
 
 
 # Overview:
@@ -205,7 +207,8 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
         hostid = zabbix_enroll_node(
             zapi, ip, host_name, omnitik_groupid, omnitik_templateid
         )
-        logging.info(f"{host_name} enrolled as hostid {hostid}")
+        if hostid is not None:
+            logging.info(f"{host_name} enrolled as hostid {hostid}")
 
 
 def main():
@@ -227,12 +230,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Automation and management tools for NYCMesh Zabbix"
     )
-    parser.add_argument(
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
         "--popular", action="store_true", help="Enroll popular routers into Zabbix"
     )
-    parser.add_argument(
+    group.add_argument(
         "--enroll",
-        required=True,
         metavar="ip",
         help="Enroll a specific node into zabbix",
     )
