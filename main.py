@@ -8,6 +8,8 @@ import requests
 import socket
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 from pysnmp.hlapi import *
+#from flappiest import connect_to_db, get_noisiest_triggers
+import flappiest as fl
 
 # OSPF2ZABBIX
 # A simple python program designed to fetch data from the NYC Mesh OSPF API,
@@ -239,8 +241,8 @@ def main():
         metavar="ip",
         help="Enroll a specific node into zabbix",
     )
-    parser.add_argument(
-        "--silence_alerts", action="store_true", help="Silence useless alerts"
+    parser.add_argument( # TODO: have option to adjust how many triggers you get
+        "--get-noisy-triggers", action="store_true", help="Query the Zabbix DB for noisy triggers"
     )
     args = parser.parse_args()
 
@@ -250,8 +252,10 @@ def main():
         if not is_valid_ipv4(args.enroll):
             raise ValueError("Must pass a valid IPv4 address!")
         enroll_device(zapi, args.enroll)
-    elif args.silence_alerts:
-        raise NotImplementedError
+    elif args.get_noisy_triggers:
+        conn = fl.connect_to_db()
+        fl.get_noisiest_triggers(conn)
+        conn.close()
 
 
 if __name__ == "__main__":
