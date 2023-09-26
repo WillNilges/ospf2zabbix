@@ -254,8 +254,27 @@ def main():
         enroll_device(zapi, args.enroll)
     elif args.get_noisy_triggers:
         conn = fl.connect_to_db()
-        fl.get_noisiest_triggers(conn)
+        fl.get_noisiest_triggers(conn, get_or_create_hostgroup(zapi))
         conn.close()
+
+        # This is wrong
+        #triggers = zapi.trigger.get(
+        #    output=['description', 'priority'],
+        #    sortfield='priority',
+        #    sortorder='DESC',
+        #    limit=100,
+        #    expandDescription=True,
+        #    selectHosts=['host'],
+        #    monitored=True,
+        #    skipDependent=True,
+        #)
+
+        #if triggers:
+        #    print("\nTop 100 Noisiest Triggers:")
+        #    for i, trigger in enumerate(triggers, start=1):
+        #        print(f"{i}. Trigger Name: {trigger['description']}, Host: {trigger['hosts'][0]['host']}")
+        #else:
+        #    print("No triggers found.")
 
 
 if __name__ == "__main__":
