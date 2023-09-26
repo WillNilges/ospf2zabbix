@@ -3,6 +3,7 @@ import os
 import time
 from main import get_or_create_hostgroup
 import psycopg2
+from prettytable import PrettyTable
 
 # https://www.zabbix.com/forum/zabbix-troubleshooting-and-problems/26057-reporting-top-10-triggers
 
@@ -35,9 +36,16 @@ def get_noisiest_triggers(conn, group_id, days_ago, limit):
     cursor.execute(query)
     result = cursor.fetchall()
     print(f"{limit} Noisiest Triggers from the last {days_ago} days")
-    print("name, description, priority, eventid")
+    #print("name, description, priority, eventid")
+    #for row in result:
+    #    print(row)
+
+    x = PrettyTable()
+    x.field_names = ["Host", "Description", "Priority", "Trip Count"]
     for row in result:
-        print(row)
+        x.add_row(row)
+
+    print(x)
     cursor.close()
 
 

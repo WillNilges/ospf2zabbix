@@ -253,7 +253,7 @@ def main():
         enroll_device(zapi, args.enroll)
     elif args.get_noisy_triggers:
         conn = fl.connect_to_db()
-        limit = 100
+        limit = 20
         fl.get_noisiest_triggers(conn, get_or_create_hostgroup(zapi), args.get_noisy_triggers, limit)
         conn.close()
 
