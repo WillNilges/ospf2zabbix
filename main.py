@@ -8,7 +8,6 @@ import requests
 import socket
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 from pysnmp.hlapi import *
-#from flappiest import connect_to_db, get_noisiest_triggers
 import flappiest as fl
 
 # OSPF2ZABBIX
@@ -242,7 +241,7 @@ def main():
         help="Enroll a specific node into zabbix",
     )
     parser.add_argument( # TODO: have option to adjust how many triggers you get
-        "--get-noisy-triggers", action="store_true", help="Query the Zabbix DB for noisy triggers"
+        "--get-noisy-triggers", metavar="days", type=int, help="Query the Zabbix DB for noisy triggers"
     )
     args = parser.parse_args()
 
@@ -254,27 +253,9 @@ def main():
         enroll_device(zapi, args.enroll)
     elif args.get_noisy_triggers:
         conn = fl.connect_to_db()
-        fl.get_noisiest_triggers(conn, get_or_create_hostgroup(zapi))
+        limit = 100
+        fl.get_noisiest_triggers(conn, get_or_create_hostgroup(zapi), args.get_noisy_triggers, limit)
         conn.close()
-
-        # This is wrong
-        #triggers = zapi.trigger.get(
-        #    output=['description', 'priority'],
-        #    sortfield='priority',
-        #    sortorder='DESC',
-        #    limit=100,
-        #    expandDescription=True,
-        #    selectHosts=['host'],
-        #    monitored=True,
-        #    skipDependent=True,
-        #)
-
-        #if triggers:
-        #    print("\nTop 100 Noisiest Triggers:")
-        #    for i, trigger in enumerate(triggers, start=1):
-        #        print(f"{i}. Trigger Name: {trigger['description']}, Host: {trigger['hosts'][0]['host']}")
-        #else:
-        #    print("No triggers found.")
 
 
 if __name__ == "__main__":
