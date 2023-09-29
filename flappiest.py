@@ -5,13 +5,19 @@ from main import get_or_create_hostgroup
 import psycopg2
 from prettytable import PrettyTable
 
-# https://www.zabbix.com/forum/zabbix-troubleshooting-and-problems/26057-reporting-top-10-triggers
 
+# Queries the DB directly for loudest triggers
+# https://www.zabbix.com/forum/zabbix-troubleshooting-and-problems/26057-reporting-top-10-triggers
+# Not that we need it, but this is the source code for the top triggers page.
+# It has a few queries we could use
+# https://git.zabbix.com/projects/ZT/repos/rsm-scripts/browse/ui/toptriggers.php#26
 def get_noisiest_triggers(conn, group_id, days_ago, limit):
     cursor = conn.cursor()
     current_time = time.time()
-    timestamp = current_time - (days_ago * 24 * 60 * 60)  # 7 days * 24 hours * 60 minutes * 60 seconds
-    query = f'''
+    timestamp = current_time - (
+        days_ago * 24 * 60 * 60
+    )  # 7 days * 24 hours * 60 minutes * 60 seconds
+    query = f"""
     SELECT h.name, t.description, t.priority, COUNT(DISTINCT e.eventid) AS cnt_event
     FROM triggers t, events e, functions f, items i, hosts h, hosts_groups hg
     WHERE t.triggerid = e.objectid
@@ -28,25 +34,20 @@ def get_noisiest_triggers(conn, group_id, days_ago, limit):
     GROUP BY h.name, t.description, t.priority  -- Added h.name to GROUP BY
     ORDER BY cnt_event DESC
     LIMIT {limit} OFFSET 0;
-    '''
-
-    # Hmmmmm I wonder if 
-    # https://git.zabbix.com/projects/ZT/repos/rsm-scripts/browse/ui/toptriggers.php#26
+    """
 
     cursor.execute(query)
     result = cursor.fetchall()
-    print(f"{limit} Noisiest Triggers from the last {days_ago} days")
-    #print("name, description, priority, eventid")
-    #for row in result:
-    #    print(row)
-
-    x = PrettyTable()
-    x.field_names = ["Host", "Description", "Priority", "Trip Count"]
-    for row in result:
-        x.add_row(row)
-
-    print(x)
     cursor.close()
+    return result
+
+
+def pretty_print_noisiest_triggers(trigger_list):
+    t = PrettyTable()
+    t.field_names = ["Host", "Description", "Priority", "Trip Count"]
+    for row in trigger_list:
+        t.add_row(row)
+    return t
 
 
 def connect_to_db():
@@ -59,4 +60,3 @@ def connect_to_db():
     }
 
     return psycopg2.connect(**db_params)
-

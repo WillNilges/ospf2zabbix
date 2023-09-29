@@ -215,12 +215,59 @@ def enroll_popular_devices(zapi, ospf_api_url, link_floor):
 def main():
     load_dotenv()
     ospf_api_url = os.getenv("P2Z_OSPF_API_URL")
-    link_floor = int(os.getenv("P2Z_LINK_FLOOR"))
+    enrolling_link_floor = int(os.getenv("P2Z_LINK_FLOOR", default=10))
     zabbix_url = os.getenv("P2Z_ZABBIX_URL")
     zabbix_uname = os.getenv("P2Z_ZABBIX_UNAME")
     zabbix_pword = os.getenv("P2Z_ZABBIX_PWORD")
+    noisy_days_ago = int(os.getenv("P2Z_NOISY_DAYS_AGO", default=7))
+    noisy_leaderboard = int(os.getenv("P2Z_NOISY_LEADERBOARD", default=20))
 
     logging.basicConfig(level=logging.INFO)
+
+    parser = argparse.ArgumentParser(
+        description="Automation and management tools for NYCMesh Zabbix"
+    )
+
+    subparsers = parser.add_subparsers(
+        help="Zabbix shenanigans to perform", dest="subcommand", required=True
+    )
+
+    popular_parser = subparsers.add_parser(
+        "enroll-popular", help="Enroll popular routers into Zabbix"
+    )
+    popular_parser.add_argument(
+        "--link-floor",
+        type=int,
+        default=enrolling_link_floor,
+        help="The minimum amount of links a node must have to be added. Defaults to 10",
+    )
+
+    enroll_parser = subparsers.add_parser(
+        "enroll-device", help="Enroll a specific node into Zabbix by IP"
+    )
+    enroll_parser.add_argument("ip", type=str, help="IP of node to enroll")
+
+    triggers_parser = subparsers.add_parser(
+        "noisy-triggers", help="Query the Zabbix DB directly for noisy triggers"
+    )
+    triggers_parser.add_argument(
+        "--publish",
+        type=bool,
+        help="Publish reports (csv file and PrettyTable) of noisy triggers to an S3 Bucket",
+    )
+    triggers_parser.add_argument(
+        "--days-ago",
+        type=int,
+        default=noisy_days_ago,
+        help="# of days ago to query for triggers",
+    )
+    triggers_parser.add_argument(
+        "--leaderboard",
+        type=int,
+        default=noisy_leaderboard,
+        help="# of days ago to query for triggers",
+    )
+    args = parser.parse_args()
 
     # Login to zabbix
     logging.info("Logging into zabbix...")
@@ -228,34 +275,31 @@ def main():
     zapi.login(zabbix_uname, zabbix_pword)
     logging.info(f"Logged into zabbix @ {zabbix_url}")
 
-    parser = argparse.ArgumentParser(
-        description="Automation and management tools for NYCMesh Zabbix"
-    )
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--popular", action="store_true", help="Enroll popular routers into Zabbix"
-    )
-    group.add_argument(
-        "--enroll",
-        metavar="ip",
-        help="Enroll a specific node into zabbix",
-    )
-    parser.add_argument( # TODO: have option to adjust how many triggers you get
-        "--get-noisy-triggers", metavar="days", type=int, help="Query the Zabbix DB for noisy triggers"
-    )
-    args = parser.parse_args()
+    logging.debug(args)
 
-    if args.popular:
-        enroll_popular_devices(zapi, ospf_api_url, link_floor)
-    elif args.enroll:
-        if not is_valid_ipv4(args.enroll):
+    if args.subcommand == "enroll-popular":
+        enroll_popular_devices(zapi, ospf_api_url, args.link_floor)
+    if args.subcommand == "enroll-device":
+        if not is_valid_ipv4(args.ip):
             raise ValueError("Must pass a valid IPv4 address!")
-        enroll_device(zapi, args.enroll)
-    elif args.get_noisy_triggers:
+        enroll_device(zapi, args.ip)
+    if args.subcommand == "noisy-triggers":
         conn = fl.connect_to_db()
-        limit = 20
-        fl.get_noisiest_triggers(conn, get_or_create_hostgroup(zapi), args.get_noisy_triggers, limit)
+
+        noisiest_triggers = fl.get_noisiest_triggers(
+            conn, get_or_create_hostgroup(zapi), args.days_ago, args.leaderboard
+        )
         conn.close()
+
+        leaderboard_title = (
+            f"{args.leaderboard} Noisiest Triggers from the last {args.days_ago} days"
+        )
+        noisiest_triggers_pretty = fl.pretty_print_noisiest_triggers(noisiest_triggers)
+        noisiest_triggers_pretty = f"{leaderboard_title}\n{noisiest_triggers_pretty}"
+        print(noisiest_triggers_pretty)
+
+        if args.publish:
+            raise NotImplemented
 
 
 if __name__ == "__main__":
