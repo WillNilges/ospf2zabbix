@@ -1,20 +1,21 @@
 import os
 import logging
-from pyzabbix import ZabbixAPI, ZabbixAPIException
-from snmp import O2ZSNMP
+from pyzabbix.api import ZabbixAPI, ZabbixAPIException
 from explorer import O2ZExplorer
+import snmp
 
 class O2ZZabbix():
     def __init__(self):
         zabbix_url = os.getenv("P2Z_ZABBIX_URL")
         zabbix_uname = os.getenv("P2Z_ZABBIX_UNAME")
         zabbix_pword = os.getenv("P2Z_ZABBIX_PWORD")
+        if zabbix_url is None or zabbix_uname is None or zabbix_pword is None:
+            logging.error(f"Zabbix credentials not provided")
+            raise ValueError("Zabbix credentials not provided.")
         logging.info("Logging into zabbix...")
         self.zapi = ZabbixAPI(zabbix_url)
         self.zapi.login(zabbix_uname, zabbix_pword)
         logging.info(f"Logged into zabbix @ {zabbix_url}")
-        self.s = O2ZSNMP()
-        self.e = O2ZExplorer()
 
 
     # Get the hostgroup, and create it if it doesn't exist
@@ -89,7 +90,7 @@ class O2ZZabbix():
         # Get groupid and templateid in preparation
         omnitik_groupid = self.get_or_create_hostgroup()
         omnitik_templateid = self.get_generic_snmp_templateid()
-        host_name = self.s.snmp_get_hostname(ip)
+        host_name = snmp.snmp_get_hostname(ip)
         hostid = self.zabbix_enroll_node(
             ip, host_name, omnitik_groupid, omnitik_templateid
         )
@@ -110,17 +111,18 @@ class O2ZZabbix():
     #           Add some kind of annotation for common name, "Grand St, SN3, etc"
     # Profit
     def enroll_popular_devices(self, link_floor):
+        e = O2ZExplorer()
         # Fetch JSON data from the URL
         logging.info("Getting OSPF Data...")
         try:
-            json_data = self.e.fetch_ospf_json()
+            json_data = e.fetch_ospf_json()
         except Exception as err:
             print("An exception occured fetching OSPF data!")
             print(err)
             return
 
         # Get the number of links that each node has
-        route_dict = self.e.extract_routes_count(json_data)
+        route_dict = e.extract_routes_count(json_data)
 
         # Get groupid and templateid in preparation
         omnitik_groupid = self.get_or_create_hostgroup()
@@ -131,7 +133,7 @@ class O2ZZabbix():
             if ct < link_floor:
                 continue
 
-            host_name = self.s.snmp_get_hostname(ip)
+            host_name = snmp.snmp_get_hostname(ip)
 
             logging.info(f"Host: {host_name}, Router: {ip}, Links: {ct}")
             hostid = self.zabbix_enroll_node(

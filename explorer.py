@@ -1,10 +1,9 @@
 import os
-import json
 import requests
 
 class O2ZExplorer():
     def __init__(self):
-        self.url = os.getenv("P2Z_OSPF_API_URL")
+        self.url = os.getenv("P2Z_OSPF_API_URL", default="")
         self.enrolling_link_floor = int(os.getenv("P2Z_LINK_FLOOR", default=10))
 
     def extract_routes_count(self, data):
