@@ -8,7 +8,7 @@ import requests
 import socket
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 from pysnmp.hlapi import *
-import flappiest as fl
+import triggers as fl
 import bucket as b
 
 # OSPF2ZABBIX
