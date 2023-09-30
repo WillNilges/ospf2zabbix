@@ -4,7 +4,7 @@ import logging
 import argparse
 from dotenv import load_dotenv
 import socket
-import triggers as fl
+from triggers import O2ZTriggers
 from bucket import O2ZBucket
 from slack import O2ZSlack
 from zabbix import O2ZZabbix
@@ -46,7 +46,7 @@ def main():
     popular_parser.add_argument(
         "--link-floor",
         type=int,
-        default=enrolling_link_floor,
+        default=int(os.getenv("P2Z_LINK_FLOOR", default=10)),
         help="The minimum amount of links a node must have to be added. Defaults to 10",
     )
 
@@ -101,23 +101,22 @@ def main():
     if args.subcommand in ("enroll-popular", "enroll-device", "noisy-triggers"):
         z = O2ZZabbix() 
         if args.subcommand == "enroll-popular":
-            z.enroll_popular_devices( ospf_api_url, args.link_floor)
+            z.enroll_popular_devices(args.link_floor)
         elif args.subcommand == "enroll-device":
             if not is_valid_ipv4(args.ip):
                 raise ValueError("Must pass a valid IPv4 address!")
             z.enroll_device(args.ip)
         elif args.subcommand == "noisy-triggers":
-            conn = fl.connect_to_db()
+            t = O2ZTriggers()
 
-            noisiest_triggers = fl.get_noisiest_triggers(
-                conn, z.get_or_create_hostgroup(), args.days_ago, args.leaderboard
+            noisiest_triggers = t.get_noisiest_triggers(
+                z.get_or_create_hostgroup(), args.days_ago, args.leaderboard
             )
-            conn.close()
 
             leaderboard_title = (
                 f"{args.leaderboard} Noisiest Triggers from the last {args.days_ago} days"
             )
-            noisiest_triggers_pretty = fl.pretty_print_noisiest_triggers(noisiest_triggers)
+            noisiest_triggers_pretty = t.pretty_print_noisiest_triggers(noisiest_triggers)
             noisiest_triggers_pretty = f"{leaderboard_title}\n{noisiest_triggers_pretty}"
             print(noisiest_triggers_pretty)
 
