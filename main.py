@@ -10,6 +10,7 @@ from pyzabbix import ZabbixAPI, ZabbixAPIException
 from pysnmp.hlapi import *
 import triggers as fl
 import bucket as b
+import slack as s
 
 # OSPF2ZABBIX
 # A simple python program designed to fetch data from the NYC Mesh OSPF API,
@@ -257,6 +258,11 @@ def main():
         help="Publish reports (csv file and PrettyTable) of noisy triggers to an S3 Bucket",
     )
     triggers_parser.add_argument(
+        "--slack",
+        action="store_true",
+        help="Publish table of noisy triggers to Slack",
+    )
+    triggers_parser.add_argument(
         "--days-ago",
         type=int,
         default=noisy_days_ago,
@@ -310,6 +316,11 @@ def main():
         if args.publish:
             s3 = b.O2ZBucket()
             s3.publish_noise_reports(noisiest_triggers, noisiest_triggers_pretty)
+
+        if args.slack:
+            slack = s.O2ZSlack()
+            slack.publish_noise_reports(noisiest_triggers_pretty)
+
     elif args.subcommand == "bucket":
         s3 = b.O2ZBucket()
 

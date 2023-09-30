@@ -7,4 +7,4 @@ RUN pip install -r requirements.txt
 
 COPY *.py .
 
-ENTRYPOINT python3 main.py noisy-triggers --publish
+ENTRYPOINT python3 main.py noisy-triggers --slack --publish

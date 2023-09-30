@@ -8,3 +8,4 @@ A collection of simple tools written in Python to interact with Zabbix.
 - Retrieve OSPF data from the OSPF Explorer and automatically enroll nodes based on popularity
 - Query a Zabbix instance's database to get a list of the noisiest triggers (A funtionality coming in 7.0)
   - Publish said list to S3
+  - Publish said list to a Slack channel
