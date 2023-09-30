@@ -1,7 +1,6 @@
 import os
 import time
 import logging
-import tempfile
 import boto3
 import botocore.exceptions
 
@@ -21,9 +20,9 @@ class O2ZBucket():
             print(o.key)
 
     def print_objects(self, obj):
-        print(obj)
+        logging.debug(obj)
         response = self.s3_client.get_object(Bucket=self.bucket, Key=obj)
-        print(response)
+        logging.debug(response)
         print(response['Body'].read().decode('utf-8'))
 
     # Publishes reports to:
@@ -34,20 +33,25 @@ class O2ZBucket():
         if title is None:
             raise ValueError("P2Z_CSV_TITLE is not set. Please set a title for this data!") 
         t = time.gmtime()
-        csv_path=f"zabbix/test/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.csv"
-        pretty_path=f"zabbix/test_pretty/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.txt"
-        with tempfile.NamedTemporaryFile() as tmp:
+        csv_path=f"zabbix/csv/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.csv"
+        pretty_path=f"zabbix/pretty/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.txt"
+
+        # Publish CSV data to S3
+        try:
             n = f"{title}\n"
             for l in noisiest_triggers:
                 for i in l:
                     n += str(i) + ', '
                 n += "\n"
-            tmp.write(str.encode(n))
-            self.s3.Object(self.bucket, csv_path).put(Body=tmp)
+            self.s3_client.put_object(Bucket=self.bucket, Key=csv_path, Body=n)
             logging.info(f"Objects successfully reported. [{csv_path}] ")
+        except botocore.exceptions.ClientError as e:
+            logging.error(f"Could not upload csv data to S3: {e}")
 
-        with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write(str.encode(noisiest_triggers_pretty))
-            self.s3.Object(self.bucket, pretty_path).put(Body=tmp)
+        # Publish pretty data to S3
+        try:
+            self.s3_client.put_object(Bucket=self.bucket, Key=pretty_path, Body=noisiest_triggers_pretty)
             logging.info(f"Objects successfully reported. [{pretty_path}]")
+        except botocore.exceptions.ClientError as e:
+            logging.error(f"Could not upload pretty data to S3: {e}")
 

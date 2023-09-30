@@ -269,9 +269,8 @@ def main():
         help="# of days ago to query for triggers",
     )
 
-    # FIXME: REMOVE
     bucket_parser = subparsers.add_parser(
-        "b", help="bucket test"
+        "bucket", help="S3 Bucket helper functions"
     )
     bucket_parser.add_argument(
         "--object",
@@ -313,7 +312,7 @@ def main():
         if args.publish:
             s3 = b.O2ZBucket()
             s3.publish_noise_reports(noisiest_triggers, noisiest_triggers_pretty)
-    elif args.subcommand == "b":
+    elif args.subcommand == "bucket":
         s3 = b.O2ZBucket()
         
         if args.object:
