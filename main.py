@@ -253,7 +253,7 @@ def main():
     )
     triggers_parser.add_argument(
         "--publish",
-        type=bool,
+        action='store_true',
         help="Publish reports (csv file and PrettyTable) of noisy triggers to an S3 Bucket",
     )
     triggers_parser.add_argument(
@@ -270,8 +270,13 @@ def main():
     )
 
     # FIXME: REMOVE
-    subparsers.add_parser(
+    bucket_parser = subparsers.add_parser(
         "b", help="bucket test"
+    )
+    bucket_parser.add_argument(
+        "--object",
+        type=str,
+        help="Path to an S3 object",
     )
 
     args = parser.parse_args()
@@ -306,9 +311,16 @@ def main():
         print(noisiest_triggers_pretty)
 
         if args.publish:
-            raise NotImplemented
+            s3 = b.O2ZBucket()
+            s3.publish_noise_reports(noisiest_triggers, noisiest_triggers_pretty)
     elif args.subcommand == "b":
-        b.bucket_setup()
+        s3 = b.O2ZBucket()
+        
+        if args.object:
+            s3.print_objects(args.object)
+            return
+
+        s3.list_objects()
 
 
 if __name__ == "__main__":
