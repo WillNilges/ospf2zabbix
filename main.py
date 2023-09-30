@@ -9,6 +9,7 @@ import socket
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 from pysnmp.hlapi import *
 import flappiest as fl
+import bucket as b
 
 # OSPF2ZABBIX
 # A simple python program designed to fetch data from the NYC Mesh OSPF API,
@@ -267,6 +268,12 @@ def main():
         default=noisy_leaderboard,
         help="# of days ago to query for triggers",
     )
+
+    # FIXME: REMOVE
+    subparsers.add_parser(
+        "b", help="bucket test"
+    )
+
     args = parser.parse_args()
 
     # Login to zabbix
@@ -279,11 +286,11 @@ def main():
 
     if args.subcommand == "enroll-popular":
         enroll_popular_devices(zapi, ospf_api_url, args.link_floor)
-    if args.subcommand == "enroll-device":
+    elif args.subcommand == "enroll-device":
         if not is_valid_ipv4(args.ip):
             raise ValueError("Must pass a valid IPv4 address!")
         enroll_device(zapi, args.ip)
-    if args.subcommand == "noisy-triggers":
+    elif args.subcommand == "noisy-triggers":
         conn = fl.connect_to_db()
 
         noisiest_triggers = fl.get_noisiest_triggers(
@@ -300,6 +307,8 @@ def main():
 
         if args.publish:
             raise NotImplemented
+    elif args.subcommand == "b":
+        b.bucket_setup()
 
 
 if __name__ == "__main__":

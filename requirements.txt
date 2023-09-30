@@ -5,3 +5,4 @@ pyasn1==0.4.8
 pysnmp
 psycopg2-binary
 prettytable
+boto3
