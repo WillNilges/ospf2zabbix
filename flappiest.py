@@ -49,7 +49,7 @@ def pretty_print_noisiest_triggers(trigger_list):
     # Then I capitalize all the words using title()
     # Then I split the string into an array by its commas
     # Then I strip away the blank item in the array using filter()
-    title = os.getenv("P2Z_CSV_TITLE") 
+    title = os.getenv("P2Z_CSV_TITLE")
     if title is None:
         raise ValueError("P2Z_CSV_TITLE is not set. Please set a title for this data!")
     t.field_names = filter(None, title.title().split(","))

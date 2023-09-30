@@ -253,7 +253,7 @@ def main():
     )
     triggers_parser.add_argument(
         "--publish",
-        action='store_true',
+        action="store_true",
         help="Publish reports (csv file and PrettyTable) of noisy triggers to an S3 Bucket",
     )
     triggers_parser.add_argument(
@@ -269,9 +269,7 @@ def main():
         help="# of days ago to query for triggers",
     )
 
-    bucket_parser = subparsers.add_parser(
-        "bucket", help="S3 Bucket helper functions"
-    )
+    bucket_parser = subparsers.add_parser("bucket", help="S3 Bucket helper functions")
     bucket_parser.add_argument(
         "--object",
         type=str,
@@ -314,7 +312,7 @@ def main():
             s3.publish_noise_reports(noisiest_triggers, noisiest_triggers_pretty)
     elif args.subcommand == "bucket":
         s3 = b.O2ZBucket()
-        
+
         if args.object:
             s3.print_objects(args.object)
             return
