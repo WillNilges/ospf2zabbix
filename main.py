@@ -282,6 +282,13 @@ def main():
         help="Path to an S3 object",
     )
 
+    slack_parser = subparsers.add_parser("slack", help="Slack helper functions")
+    slack_parser.add_argument(
+        "--delete",
+        type=str,
+        help="Deletes a message from the bot",
+    )
+
     args = parser.parse_args()
 
     # Login to zabbix
@@ -329,6 +336,11 @@ def main():
             return
 
         s3.list_objects()
+    
+    elif args.subcommand == "slack":
+        slack = s.O2ZSlack()
+        if args.delete:
+            slack.delete_report(args.delete)
 
 
 if __name__ == "__main__":

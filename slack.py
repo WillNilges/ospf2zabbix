@@ -13,3 +13,11 @@ class O2ZSlack():
                 text=f"```{triggers}```",
             )
 
+    def delete_report(self, url):
+        # https://nycmesh.slack.com/archives/C05TPHA43PD/p1696054569736259
+        us = url.split("/")
+        # Goddammit Slack. Gotta peel off the 'p', then add a period about
+        # 6 characters from the front to get a timestamp.
+        ts=us[-1][1:]
+        ts=f"{ts[:-6]}.{ts[-6:]}"
+        self.client.chat_delete(channel=us[-2], ts=ts)
