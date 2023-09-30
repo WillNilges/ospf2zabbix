@@ -40,20 +40,16 @@ def main():
         help="Zabbix shenanigans to perform", dest="subcommand", required=True
     )
 
-    popular_parser = subparsers.add_parser(
-        "enroll-popular", help="Enroll popular routers into Zabbix"
+    enroll_parser = subparsers.add_parser(
+        "enroll", help="Enroll devices into Zabbix"
     )
-    popular_parser.add_argument(
-        "--link-floor",
+    enroll_parser.add_argument("--ip", type=str, help="Enroll a node by IP")
+    enroll_parser.add_argument(
+        "--popular",
         type=int,
         default=int(os.getenv("P2Z_LINK_FLOOR", default=10)),
-        help="The minimum amount of links a node must have to be added. Defaults to 10",
+        help="Get devices on the mesh and automatically add ones that have a minimum number of links (Defaults to 10).",
     )
-
-    enroll_parser = subparsers.add_parser(
-        "enroll-device", help="Enroll a specific node into Zabbix by IP"
-    )
-    enroll_parser.add_argument("ip", type=str, help="IP of node to enroll")
 
     triggers_parser = subparsers.add_parser(
         "noisy-triggers", help="Query the Zabbix DB directly for noisy triggers"
@@ -100,12 +96,16 @@ def main():
 
     if args.subcommand in ("enroll-popular", "enroll-device", "noisy-triggers"):
         z = O2ZZabbix() 
-        if args.subcommand == "enroll-popular":
-            z.enroll_popular_devices(args.link_floor)
-        elif args.subcommand == "enroll-device":
-            if not is_valid_ipv4(args.ip):
-                raise ValueError("Must pass a valid IPv4 address!")
-            z.enroll_device(args.ip)
+        if args.subcommand == "enroll":
+            if args.ip:
+                if not is_valid_ipv4(args.ip):
+                    raise ValueError("Must pass a valid IPv4 address!")
+                z.enroll_device(args.ip)
+            elif args.popular:
+                z.enroll_popular_devices(args.popular)
+            else:
+                args.help()
+
         elif args.subcommand == "noisy-triggers":
             t = O2ZTriggers()
 
