@@ -47,6 +47,7 @@ def main():
     enroll_parser.add_argument(
         "--popular",
         type=int,
+        nargs="?",
         default=int(os.getenv("P2Z_LINK_FLOOR", default=10)),
         help="Get devices on the mesh and automatically add ones that have a minimum number of links (Defaults to 10).",
     )
@@ -94,7 +95,7 @@ def main():
     args = parser.parse_args()
     logging.debug(args)
 
-    if args.subcommand in ("enroll-popular", "enroll-device", "noisy-triggers"):
+    if args.subcommand in ("enroll", "noisy-triggers"):
         z = O2ZZabbix() 
         if args.subcommand == "enroll":
             if args.ip:
