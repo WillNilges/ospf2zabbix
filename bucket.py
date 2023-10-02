@@ -7,10 +7,10 @@ import botocore.exceptions
 
 class O2ZBucket:
     def __init__(self):
-        access_key = os.getenv("P2Z_S3_ACCESS_KEY")
-        secret_key = os.getenv("P2Z_S3_SECRET_KEY")
+        access_key = os.getenv("P2Z_S3_ACCESS_KEY", default="")
+        secret_key = os.getenv("P2Z_S3_SECRET_KEY", default="")
         region = os.getenv("P2Z_S3_REGION", default="us-east-1")
-        self.bucket = os.getenv("P2Z_S3_BUCKET")
+        self.bucket = os.getenv("P2Z_S3_BUCKET", default="")
 
         self.s3 = boto3.resource(
             "s3", aws_access_key_id=access_key, aws_secret_access_key=secret_key
@@ -29,6 +29,15 @@ class O2ZBucket:
         response = self.s3_client.get_object(Bucket=self.bucket, Key=obj)
         logging.debug(response)
         print(response["Body"].read().decode("utf-8"))
+
+    def delete_object(self, obj):
+        try:
+            logging.debug(obj)
+            response = self.s3_client.delete_object(Bucket=self.bucket, Key=obj)
+            logging.info(response)
+        except botocore.exceptions.ClientError as e:
+            logging.error(e)
+
 
     # Publishes reports to:
     #    s3://mesh-support-reports/zabbix/csv/YYYY/MM/DD/noisiest.csv
