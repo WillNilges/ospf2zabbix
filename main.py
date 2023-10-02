@@ -84,6 +84,11 @@ def main():
         type=str,
         help="Path to an S3 object",
     )
+    bucket_parser.add_argument(
+        "--delete",
+        type=str,
+        help="Delete an S3 object",
+    )
 
     slack_parser = subparsers.add_parser("slack", help="Slack helper functions")
     slack_parser.add_argument(
@@ -134,6 +139,10 @@ def main():
 
         if args.object:
             s3.print_objects(args.object)
+            return
+
+        if args.delete:
+            s3.delete_object(args.delete)
             return
 
         s3.list_objects()

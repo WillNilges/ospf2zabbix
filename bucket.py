@@ -30,6 +30,15 @@ class O2ZBucket:
         logging.debug(response)
         print(response["Body"].read().decode("utf-8"))
 
+    def delete_object(self, obj):
+        try:
+            logging.debug(obj)
+            response = self.s3_client.delete_object(Bucket=self.bucket, Key=obj)
+            logging.info(response)
+        except botocore.exceptions.ClientError as e:
+            logging.error(e)
+
+
     # Publishes reports to:
     #    s3://mesh-support-reports/zabbix/csv/YYYY/MM/DD/noisiest.csv
     #    s3://mesh-support-reports/zabbix/pretty/YYYY/MM/DD/noisiest.txt

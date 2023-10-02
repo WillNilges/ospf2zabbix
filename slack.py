@@ -1,4 +1,5 @@
 import os
+import logging
 from slack_sdk import WebClient
 
 class O2ZSlack():
@@ -12,6 +13,7 @@ class O2ZSlack():
                 channel=self.channel,
                 text=f"```{triggers}```",
             )
+        logging.info("Report published to slack")
 
     def delete_report(self, url):
         # https://nycmesh.slack.com/archives/C05TPHA43PD/p1696054569736259
