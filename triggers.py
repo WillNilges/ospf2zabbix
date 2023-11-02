@@ -3,7 +3,6 @@ import os
 import time
 import weakref
 import psycopg2
-from prettytable import PrettyTable
 
 class O2ZTriggers():
     def __init__(self):
@@ -56,20 +55,4 @@ class O2ZTriggers():
         result = cursor.fetchall()
         cursor.close()
         return result
-
-
-    def pretty_print_noisiest_triggers(self, trigger_list):
-        t = PrettyTable()
-        # This is a little confusing, so here's an explaination:
-        # I get the env var into a variable called title, then check if that worked
-        # Then I capitalize all the words using title()
-        # Then I split the string into an array by its commas
-        # Then I strip away the blank item in the array using filter()
-        title = os.getenv("P2Z_CSV_TITLE")
-        if title is None:
-            raise ValueError("P2Z_CSV_TITLE is not set. Please set a title for this data!")
-        t.field_names = filter(None, title.title().split(","))
-        for row in trigger_list:
-            t.add_row(row)
-        return t
 

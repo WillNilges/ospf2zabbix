@@ -122,13 +122,10 @@ def main():
             leaderboard_title = (
                 f"{args.leaderboard} Noisiest Triggers from the last {args.days_ago} days"
             )
-            noisiest_triggers_pretty = t.pretty_print_noisiest_triggers(noisiest_triggers)
-            noisiest_triggers_pretty = f"{leaderboard_title}\n{noisiest_triggers_pretty}"
-            print(noisiest_triggers_pretty)
 
             if args.publish:
                 s3 = O2ZBucket()
-                s3.publish_noise_reports(noisiest_triggers, noisiest_triggers_pretty)
+                s3.publish_noise_reports(noisiest_triggers)
 
             if args.slack:
                 slack = O2ZSlack()

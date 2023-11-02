@@ -41,8 +41,7 @@ class O2ZBucket:
 
     # Publishes reports to:
     #    s3://mesh-support-reports/zabbix/csv/YYYY/MM/DD/noisiest.csv
-    #    s3://mesh-support-reports/zabbix/pretty/YYYY/MM/DD/noisiest.txt
-    def publish_noise_reports(self, noisiest_triggers, noisiest_triggers_pretty):
+    def publish_noise_reports(self, noisiest_triggers):
         title = os.getenv("P2Z_CSV_TITLE")
         if title is None:
             raise ValueError(
@@ -50,7 +49,6 @@ class O2ZBucket:
             )
         t = time.gmtime()
         csv_path = f"zabbix/csv/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.csv"
-        pretty_path = f"zabbix/pretty/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.txt"
 
         # Publish CSV data to S3
         try:
@@ -64,11 +62,3 @@ class O2ZBucket:
         except botocore.exceptions.ClientError as e:
             logging.error(f"Could not upload csv data to S3: {e}")
 
-        # Publish pretty data to S3
-        try:
-            self.s3_client.put_object(
-                Bucket=self.bucket, Key=pretty_path, Body=noisiest_triggers_pretty
-            )
-            logging.info(f"Objects successfully reported. [{pretty_path}]")
-        except botocore.exceptions.ClientError as e:
-            logging.error(f"Could not upload pretty data to S3: {e}")
