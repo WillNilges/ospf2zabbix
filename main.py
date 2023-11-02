@@ -132,7 +132,7 @@ def main():
 
             if args.slack:
                 slack = O2ZSlack()
-                slack.publish_noise_reports(noisiest_triggers_pretty)
+                slack.publish_noise_reports(noisiest_triggers)
 
     elif args.subcommand == "bucket":
         s3 = O2ZBucket()

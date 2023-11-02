@@ -8,10 +8,18 @@ class O2ZSlack():
         self.channel = os.getenv("P2Z_SLACK_CHANNEL")
         self.client = WebClient(token=slack_token)
 
-    def publish_noise_reports(self, triggers):
+
+    def publish_noise_reports(self, noisy_triggers):
+        noisy_trigger_report = f"*Noisiest triggers from the last 7 days*\n"
+
+        for t in noisy_triggers:
+            noisy_trigger_report += f":loud_sound: *{t[0]}*\n{t[1]} (*{t[2]} times*)\n\n"
+
+
         self.client.chat_postMessage(
                 channel=self.channel,
-                text=f"```{triggers}```",
+                text=noisy_trigger_report,
+                mrkdwn=True,
             )
         logging.info("Report published to slack")
 
