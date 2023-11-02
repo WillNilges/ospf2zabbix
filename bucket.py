@@ -38,7 +38,6 @@ class O2ZBucket:
         except botocore.exceptions.ClientError as e:
             logging.error(e)
 
-
     # Publishes reports to:
     #    s3://mesh-support-reports/zabbix/csv/YYYY/MM/DD/noisiest.csv
     def publish_noise_reports(self, noisiest_triggers):
@@ -61,4 +60,3 @@ class O2ZBucket:
             logging.info(f"Objects successfully reported. [{csv_path}] ")
         except botocore.exceptions.ClientError as e:
             logging.error(f"Could not upload csv data to S3: {e}")
-

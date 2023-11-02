@@ -1,7 +1,8 @@
 import os
 import requests
 
-class O2ZExplorer():
+
+class O2ZExplorer:
     def __init__(self):
         self.url = os.getenv("P2Z_OSPF_API_URL", default="")
         self.enrolling_link_floor = int(os.getenv("P2Z_LINK_FLOOR", default=10))
@@ -20,7 +21,6 @@ class O2ZExplorer():
                 routes_count[router_ip] = link_ct
         return routes_count
 
-
     def fetch_ospf_json(self):
         response = requests.get(self.url)
         if response.status_code == 200:
@@ -28,5 +28,3 @@ class O2ZExplorer():
         else:
             print(f"Failed to fetch data. Status code: {response.status_code}")
             return None
-
-

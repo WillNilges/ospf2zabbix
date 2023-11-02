@@ -1,6 +1,7 @@
 import logging
 from pysnmp.hlapi import *
 
+
 def snmp_get(host, oid):
     for errorIndication, errorStatus, errorIndex, varBinds in getCmd(
         SnmpEngine(),
@@ -29,13 +30,12 @@ def snmp_get(host, oid):
             for varBind in varBinds:
                 return varBind
 
+
 # Get SNMP info from router
 def snmp_get_hostname(ip):
     snmp_host_name = "1.3.6.1.2.1.1.5.0"
     data = snmp_get(ip, snmp_host_name)
-    if data is not None: 
+    if data is not None:
         return data[1].prettyPrint()
     logging.error("Could not get SNMP Hostname")
     raise ValueError("Could not get SNMP Hostname")
-
-

@@ -25,6 +25,7 @@ def is_valid_ipv4(ip):
     except socket.error:
         return False
 
+
 def main():
     load_dotenv()
     noisy_days_ago = int(os.getenv("P2Z_NOISY_DAYS_AGO", default=7))
@@ -40,9 +41,7 @@ def main():
         help="Zabbix shenanigans to perform", dest="subcommand", required=True
     )
 
-    enroll_parser = subparsers.add_parser(
-        "enroll", help="Enroll devices into Zabbix"
-    )
+    enroll_parser = subparsers.add_parser("enroll", help="Enroll devices into Zabbix")
     enroll_parser.add_argument("--ip", type=str, help="Enroll a node by IP")
     enroll_parser.add_argument(
         "--popular",
@@ -101,7 +100,7 @@ def main():
     logging.debug(args)
 
     if args.subcommand in ("enroll", "noisy-triggers"):
-        z = O2ZZabbix() 
+        z = O2ZZabbix()
         if args.subcommand == "enroll":
             if args.ip:
                 if not is_valid_ipv4(args.ip):
@@ -141,7 +140,7 @@ def main():
             return
 
         s3.list_objects()
-    
+
     elif args.subcommand == "slack":
         slack = O2ZSlack()
         if args.delete:

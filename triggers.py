@@ -4,7 +4,8 @@ import time
 import weakref
 import psycopg2
 
-class O2ZTriggers():
+
+class O2ZTriggers:
     def __init__(self):
         db_params = {
             "host": os.getenv("P2Z_PGSQL_HOST"),
@@ -19,7 +20,7 @@ class O2ZTriggers():
 
     @staticmethod
     def _cleanup_conn(conn):
-            conn.close()
+        conn.close()
 
     # Queries the DB directly for loudest triggers
     # https://www.zabbix.com/forum/zabbix-troubleshooting-and-problems/26057-reporting-top-10-triggers
@@ -55,4 +56,3 @@ class O2ZTriggers():
         result = cursor.fetchall()
         cursor.close()
         return result
-

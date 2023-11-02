@@ -4,7 +4,8 @@ from pyzabbix.api import ZabbixAPI, ZabbixAPIException
 from explorer import O2ZExplorer
 import snmp
 
-class O2ZZabbix():
+
+class O2ZZabbix:
     def __init__(self):
         zabbix_url = os.getenv("P2Z_ZABBIX_URL")
         zabbix_uname = os.getenv("P2Z_ZABBIX_UNAME")
@@ -17,29 +18,28 @@ class O2ZZabbix():
         self.zapi.login(zabbix_uname, zabbix_pword)
         logging.info(f"Logged into zabbix @ {zabbix_url}")
 
-
     # Get the hostgroup, and create it if it doesn't exist
     def get_or_create_hostgroup(self):
         nycmesh_node_hostgroup = "NYCMeshNodes"
         try:
-            groupid = self.zapi.hostgroup.get(filter={"name": nycmesh_node_hostgroup})[0].get(
-                "groupid"
-            )
+            groupid = self.zapi.hostgroup.get(filter={"name": nycmesh_node_hostgroup})[
+                0
+            ].get("groupid")
             return groupid
         except (ZabbixAPIException, IndexError):
             logging.warn(f"Did not find host group. Creating {nycmesh_node_hostgroup}")
-            groupid = self.zapi.hostgroup.create(name=nycmesh_node_hostgroup)["groupids"][0]
+            groupid = self.zapi.hostgroup.create(name=nycmesh_node_hostgroup)[
+                "groupids"
+            ][0]
             return groupid
-
 
     # Get the templateID for the generic SNMP device
     def get_generic_snmp_templateid(self):
         return int(
-            self.zapi.template.get(filter={"name": "Network Generic Device by SNMP"})[0].get(
-                "templateid"
-            )
+            self.zapi.template.get(filter={"name": "Network Generic Device by SNMP"})[
+                0
+            ].get("templateid")
         )
-
 
     # Logic that makes API call to zabbix to enroll a single host
     def zabbix_enroll_node(self, ip, host_name, omnitik_groupid, omnitik_templateid):
@@ -84,7 +84,6 @@ class O2ZZabbix():
         hostid = new_snmp_host["hostids"][0]
         return hostid
 
-
     # Enroll a single device in zabbix
     def enroll_device(self, ip):
         # Get groupid and templateid in preparation
@@ -96,7 +95,6 @@ class O2ZZabbix():
         )
         if hostid is not None:
             logging.info(f"{host_name} ({ip}) enrolled as hostid {hostid}")
-
 
     # Overview:
     # Fetch raw OSPF JSON
@@ -141,5 +139,3 @@ class O2ZZabbix():
             )
             if hostid is not None:
                 logging.info(f"{host_name} enrolled as hostid {hostid}")
-
-
