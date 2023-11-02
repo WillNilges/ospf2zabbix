@@ -119,9 +119,7 @@ def main():
                 z.get_or_create_hostgroup(), args.days_ago, args.leaderboard
             )
 
-            leaderboard_title = (
-                f"{args.leaderboard} Noisiest Triggers from the last {args.days_ago} days"
-            )
+            noisiest_triggers.sort(key=lambda tup: tup[2], reverse=True)
 
             if args.publish:
                 s3 = O2ZBucket()

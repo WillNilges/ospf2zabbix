@@ -9,12 +9,15 @@ class O2ZSlack():
         self.client = WebClient(token=slack_token)
 
 
-    def publish_noise_reports(self, noisy_triggers):
+    def publish_noise_reports(self, noisiest_triggers):
         noisy_trigger_report = f"*Noisiest triggers from the last 7 days*\n"
 
-        for t in noisy_triggers:
-            noisy_trigger_report += f":loud_sound: *{t[0]}*\n{t[1]} (*{t[2]} times*)\n\n"
+        for t in noisiest_triggers:
+            device = t[0]
+            trigger = t[1]
+            count = t[2]
 
+            noisy_trigger_report += f":loud_sound:*×{count} — {device}*\n{trigger}\n\n"
 
         self.client.chat_postMessage(
                 channel=self.channel,
