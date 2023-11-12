@@ -47,7 +47,9 @@ class O2ZBucket:
                 "P2Z_CSV_TITLE is not set. Please set a title for this data!"
             )
         t = time.gmtime()
-        csv_path = f"zabbix/csv/{t.tm_year}/{t.tm_mon}/{t.tm_mday}/noisiest.csv"
+        t_string = f"{t.tm_year}/{t.tm_mon}/{t.tm_mday}"
+        t_string = "".join(f"{x.zfill(2)}/" for x in t_string.split("/"))
+        csv_path = f"zabbix/csv/{t_string}noisiest.csv"
 
         # Publish CSV data to S3
         try:
