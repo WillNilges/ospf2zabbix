@@ -15,7 +15,8 @@ class O2ZSlack:
         for t in noisiest_triggers:
             device = t[0]
             trigger = t[1]
-            count = t[2]
+            # severity = t[2] # unused
+            count = t[3]
 
             noisy_trigger_report += f":loud_sound:*×{count} — {device}*\n{trigger}\n\n"
 
