@@ -4,6 +4,15 @@ from pyzabbix.api import ZabbixAPI, ZabbixAPIException
 from explorer import O2ZExplorer
 import snmp
 
+# Template ID names
+SNMP_TID = "Network Generic Device by SNMP"
+UBIQUITI_AIROS_TID = "Ubiquiti AirOS by SNMP"
+
+AIROS_SNMP_VER = 1
+OMNI_SNMP_VER = 2
+
+OMNI_HOSTGROUP = "NYCMeshNodes"
+RADIO_HOSTGROUP = "Radios"
 
 class O2ZZabbix:
     def __init__(self):
@@ -19,30 +28,29 @@ class O2ZZabbix:
         logging.info(f"Logged into zabbix @ {zabbix_url}")
 
     # Get the hostgroup, and create it if it doesn't exist
-    def get_or_create_hostgroup(self):
-        nycmesh_node_hostgroup = "NYCMeshNodes"
+    def get_or_create_hostgroup(self, hostgroup):
         try:
-            groupid = self.zapi.hostgroup.get(filter={"name": nycmesh_node_hostgroup})[
+            groupid = self.zapi.hostgroup.get(filter={"name": hostgroup})[
                 0
             ].get("groupid")
             return groupid
         except (ZabbixAPIException, IndexError):
-            logging.warn(f"Did not find host group. Creating {nycmesh_node_hostgroup}")
-            groupid = self.zapi.hostgroup.create(name=nycmesh_node_hostgroup)[
+            logging.warn(f"Did not find host group. Creating {hostgroup}")
+            groupid = self.zapi.hostgroup.create(name=hostgroup)[
                 "groupids"
             ][0]
             return groupid
 
     # Get the templateID for the generic SNMP device
-    def get_generic_snmp_templateid(self):
+    def get_templateid(self, template_name):
         return int(
-            self.zapi.template.get(filter={"name": "Network Generic Device by SNMP"})[
+            self.zapi.template.get(filter={"name": template_name})[
                 0
             ].get("templateid")
         )
 
     # Logic that makes API call to zabbix to enroll a single host
-    def zabbix_enroll_node(self, ip, host_name, omnitik_groupid, omnitik_templateid):
+    def enroll_snmp(self, ip, host_name, groupid, templateid, snmp_version):
         # Check if Zabbix already knows about it
         maybe_host = self.zapi.host.get(filter={"host": host_name})
 
@@ -64,7 +72,7 @@ class O2ZZabbix:
                     "dns": "",
                     "port": 161,
                     "details": {
-                        "version": 2,
+                        "version": snmp_version, # 2 if omni, 1 if ubiquiti
                         "bulk": 1,
                         "community": "public",
                     },
@@ -72,26 +80,37 @@ class O2ZZabbix:
             ],
             groups=[
                 {
-                    "groupid": omnitik_groupid,
+                    "groupid": groupid,
                 }
             ],
             templates=[
                 {
-                    "templateid": omnitik_templateid,
+                    "templateid": templateid,
                 }
             ],
         )
         hostid = new_snmp_host["hostids"][0]
         return hostid
 
-    # Enroll a single device in zabbix
-    def enroll_device(self, ip):
+    def enroll_single_antenna(self, ip):
         # Get groupid and templateid in preparation
-        omnitik_groupid = self.get_or_create_hostgroup()
-        omnitik_templateid = self.get_generic_snmp_templateid()
+        groupid = self.get_or_create_hostgroup(RADIO_HOSTGROUP)
+        templateid = self.get_templateid(UBIQUITI_AIROS_TID)
         host_name = snmp.snmp_get_hostname(ip)
-        hostid = self.zabbix_enroll_node(
-            ip, host_name, omnitik_groupid, omnitik_templateid
+        hostid = self.enroll_snmp(
+            ip, host_name, groupid, templateid, UBIQUITI_AIROS_TID
+        )
+        if hostid is not None:
+            logging.info(f"{host_name} ({ip}) enrolled as hostid {hostid}")
+
+    # Enroll a single device in zabbix
+    def enroll_single_node(self, ip):
+        # Get groupid and templateid in preparation
+        omnitik_groupid = self.get_or_create_hostgroup(OMNI_HOSTGROUP)
+        omnitik_templateid = self.get_templateid(SNMP_TID)
+        host_name = snmp.snmp_get_hostname(ip)
+        hostid = self.enroll_snmp(
+            ip, host_name, omnitik_groupid, omnitik_templateid, OMNI_SNMP_VER
         )
         if hostid is not None:
             logging.info(f"{host_name} ({ip}) enrolled as hostid {hostid}")
@@ -108,7 +127,7 @@ class O2ZZabbix:
     #           Set up monitoring template, add a Slack alert thingy
     #           Add some kind of annotation for common name, "Grand St, SN3, etc"
     # Profit
-    def enroll_popular_devices(self, link_floor):
+    def enroll_popular_nodes(self, link_floor):
         e = O2ZExplorer()
         # Fetch JSON data from the URL
         logging.info("Getting OSPF Data...")
@@ -123,8 +142,8 @@ class O2ZZabbix:
         route_dict = e.extract_routes_count(json_data)
 
         # Get groupid and templateid in preparation
-        omnitik_groupid = self.get_or_create_hostgroup()
-        omnitik_templateid = self.get_generic_snmp_templateid()
+        omnitik_groupid = self.get_or_create_hostgroup(OMNI_HOSTGROUP)
+        omnitik_templateid = self.get_templateid(SNMP_TID)
 
         for ip, ct in route_dict.items():
             # Do nothing if the device does not have enough links
@@ -134,8 +153,8 @@ class O2ZZabbix:
             host_name = snmp.snmp_get_hostname(ip)
 
             logging.info(f"Host: {host_name}, Router: {ip}, Links: {ct}")
-            hostid = self.zabbix_enroll_node(
-                ip, host_name, omnitik_groupid, omnitik_templateid
+            hostid = self.enroll_snmp(
+                ip, host_name, omnitik_groupid, omnitik_templateid, OMNI_SNMP_VER
             )
             if hostid is not None:
                 logging.info(f"{host_name} enrolled as hostid {hostid}")

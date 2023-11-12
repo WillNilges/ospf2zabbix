@@ -110,9 +110,9 @@ def main():
             if args.ip:
                 if not is_valid_ipv4(args.ip):
                     raise ValueError("Must pass a valid IPv4 address!")
-                z.enroll_device(args.ip)
+                z.enroll_single_node(args.ip)
             elif args.popular:
-                z.enroll_popular_devices(args.popular)
+                z.enroll_popular_nodes(args.popular)
             else:
                 args.help()
 
