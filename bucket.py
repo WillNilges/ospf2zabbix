@@ -40,7 +40,9 @@ class O2ZBucket:
 
     # Publishes reports to:
     #    s3://mesh-support-reports/zabbix/csv/YYYY/MM/DD/noisiest.csv
-    def publish_noise_reports(self, noisiest_triggers, test=False):
+    # Optionally, publishes the pretty-printed version to:
+    #    s3://mesh-support-reports/zabbix/pretty/YYYY/MM/DD/noisiest.csv
+    def publish_noise_reports(self, triggers, pretty=False, test=False):
         title = os.getenv("P2Z_CSV_TITLE")
         if title is None:
             raise ValueError(
@@ -53,7 +55,7 @@ class O2ZBucket:
 
         # Assemble CSV to push
         body = f"{title}\n"
-        for t in noisiest_triggers:
+        for t in triggers.trigger_list:
             body += f"{t.host}, {t.description}, {t.priority}, {t.count},\n"
 
         if test:
@@ -64,6 +66,22 @@ class O2ZBucket:
         # Publish CSV data to S3
         try:
             self.s3_client.put_object(Bucket=self.bucket, Key=csv_path, Body=body)
-            logging.info(f"Objects successfully reported. [{csv_path}] ")
+            logging.info(f"Objects successfully reported to {csv_path}")
         except botocore.exceptions.ClientError as e:
             logging.error(f"Could not upload csv data to S3: {e}")
+
+        if pretty:
+            pretty_path = f"zabbix/pretty/{t_string}noisiest.csv"
+
+            # We do this rigamarole so we can check the assertion
+            pretty_triggers = triggers.pretty_print()
+            assert pretty_triggers is not None
+            pretty_triggers = f"{pretty_triggers}"
+
+            try:
+                self.s3_client.put_object(
+                    Bucket=self.bucket, Key=pretty_path, Body=pretty_triggers
+                )
+                logging.info(f"Objects successfully reported to {pretty_path}")
+            except botocore.exceptions.ClientError as e:
+                logging.error(f"Could not upload pretty data to S3: {e}")

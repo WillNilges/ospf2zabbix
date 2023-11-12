@@ -15,7 +15,9 @@ class O2ZSlack:
         noisy_trigger_report = f"*Noisiest triggers from the last 7 days*\n"
 
         for t in noisiest_triggers:
-            noisy_trigger_report += f":loud_sound:*×{t.count} — {t.host}*\n{t.description}\n\n"
+            noisy_trigger_report += (
+                f":loud_sound:*×{t.count} — {t.host}*\n{t.description}\n\n"
+            )
 
         self.client.chat_postMessage(
             channel=self.channel,

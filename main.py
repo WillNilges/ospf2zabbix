@@ -57,7 +57,7 @@ def main():
     triggers_parser.add_argument(
         "--publish",
         action="store_true",
-        help="Publish CSV report of noisy triggers to an S3 Bucket",
+        help="Publish CSV report and PrettyTable report of noisy triggers to an S3 Bucket",
     )
     triggers_parser.add_argument(
         "--test-publish",
@@ -123,11 +123,14 @@ def main():
                 z.get_or_create_hostgroup(), args.days_ago, args.leaderboard
             )
 
-            print(t.pretty_print_noisiest_triggers())
+            print(t.pretty_print())
 
             if args.publish or args.test_publish:
                 s3 = O2ZBucket()
-                s3.publish_noise_reports(t.trigger_list, test=args.test_publish)
+                pretty_publish = True if os.getenv("P2Z_S3_PRETTY") else False
+                s3.publish_noise_reports(
+                    t, pretty=pretty_publish, test=args.test_publish
+                )
 
             if args.slack:
                 slack = O2ZSlack()

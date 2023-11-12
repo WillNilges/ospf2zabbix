@@ -3,8 +3,9 @@ import os
 import time
 import weakref
 import psycopg2
-from prettytable import PrettyTable 
+from prettytable import PrettyTable
 from dataclasses import dataclass
+
 
 @dataclass
 class O2ZTriggerRow:
@@ -12,6 +13,7 @@ class O2ZTriggerRow:
     description: str
     priority: int
     count: int
+
 
 class O2ZTriggers:
     def __init__(self):
@@ -71,7 +73,7 @@ class O2ZTriggers:
             self.trigger_list.append(O2ZTriggerRow(r[0], r[1], r[2], r[3]))
         return result
 
-    def pretty_print_noisiest_triggers(self):
+    def pretty_print(self):
         if self.trigger_list is not None:
             t = PrettyTable()
 
@@ -83,7 +85,9 @@ class O2ZTriggers:
             # Strip away the final blank item in the array using filter()
             title = os.getenv("P2Z_CSV_TITLE")
             if title is None:
-                raise ValueError("P2Z_CSV_TITLE is not set. Please set a title for this data!")
+                raise ValueError(
+                    "P2Z_CSV_TITLE is not set. Please set a title for this data!"
+                )
             t.field_names = filter(None, title.title().split(","))
 
             # Dump triggers into this table.
