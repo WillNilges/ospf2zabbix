@@ -118,7 +118,7 @@ def main():
                 z.get_or_create_hostgroup(), args.days_ago, args.leaderboard
             )
 
-            noisiest_triggers.sort(key=lambda tup: tup[2], reverse=True)
+            print(t.pretty_print_noisiest_triggers())
 
             if args.publish:
                 s3 = O2ZBucket()

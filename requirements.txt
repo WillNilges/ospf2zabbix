@@ -6,3 +6,4 @@ pysnmp
 psycopg2-binary
 boto3
 slack_sdk
+prettytable

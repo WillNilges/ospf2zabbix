@@ -3,6 +3,7 @@ import os
 import time
 import weakref
 import psycopg2
+from prettytable import PrettyTable 
 
 
 class O2ZTriggers:
@@ -17,6 +18,7 @@ class O2ZTriggers:
 
         self.conn = psycopg2.connect(**db_params)
         self._finalizer = weakref.finalize(self, self._cleanup_conn, self.conn)
+        self.trigger_list = None
 
     @staticmethod
     def _cleanup_conn(conn):
@@ -55,4 +57,28 @@ class O2ZTriggers:
         cursor.execute(query)
         result = cursor.fetchall()
         cursor.close()
+
+        result.sort(key=lambda tup: tup[3], reverse=True)
+        self.trigger_list = result
         return result
+
+    def pretty_print_noisiest_triggers(self):
+        if self.trigger_list is not None:
+            t = PrettyTable()
+
+            # This is how the table title works:
+            # Pull the environment variable into title.
+            # Bail if that fails.
+            # Capitalize all the words using title()
+            # Split the string into an array by its commas
+            # Strip away the final blank item in the array using filter()
+            title = os.getenv("P2Z_CSV_TITLE")
+            if title is None:
+                raise ValueError("P2Z_CSV_TITLE is not set. Please set a title for this data!")
+            t.field_names = filter(None, title.title().split(","))
+
+            # Dump triggers into this table.
+            for row in self.trigger_list:
+                t.add_row(row)
+            return t
+        return None
