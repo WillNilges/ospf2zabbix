@@ -7,18 +7,15 @@ class O2ZSlack:
     def __init__(self):
         slack_token = os.getenv("P2Z_SLACK_TOKEN")
         self.channel = os.getenv("P2Z_SLACK_CHANNEL")
+        assert self.channel is not None
+        assert slack_token is not None
         self.client = WebClient(token=slack_token)
 
     def publish_noise_reports(self, noisiest_triggers):
         noisy_trigger_report = f"*Noisiest triggers from the last 7 days*\n"
 
         for t in noisiest_triggers:
-            device = t[0]
-            trigger = t[1]
-            # severity = t[2] # unused
-            count = t[3]
-
-            noisy_trigger_report += f":loud_sound:*×{count} — {device}*\n{trigger}\n\n"
+            noisy_trigger_report += f":loud_sound:*×{t.count} — {t.host}*\n{t.description}\n\n"
 
         self.client.chat_postMessage(
             channel=self.channel,

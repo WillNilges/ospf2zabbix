@@ -40,7 +40,7 @@ class O2ZBucket:
 
     # Publishes reports to:
     #    s3://mesh-support-reports/zabbix/csv/YYYY/MM/DD/noisiest.csv
-    def publish_noise_reports(self, noisiest_triggers):
+    def publish_noise_reports(self, noisiest_triggers, test=False):
         title = os.getenv("P2Z_CSV_TITLE")
         if title is None:
             raise ValueError(
@@ -51,14 +51,19 @@ class O2ZBucket:
         t_string = "".join(f"{x.zfill(2)}/" for x in t_string.split("/"))
         csv_path = f"zabbix/csv/{t_string}noisiest.csv"
 
+        # Assemble CSV to push
+        body = f"{title}\n"
+        for t in noisiest_triggers:
+            body += f"{t.host}, {t.description}, {t.priority}, {t.count},\n"
+
+        if test:
+            print(csv_path)
+            print(body)
+            return
+
         # Publish CSV data to S3
         try:
-            n = f"{title}\n"
-            for l in noisiest_triggers:
-                for i in l:
-                    n += str(i) + ", "
-                n += "\n"
-            self.s3_client.put_object(Bucket=self.bucket, Key=csv_path, Body=n)
+            self.s3_client.put_object(Bucket=self.bucket, Key=csv_path, Body=body)
             logging.info(f"Objects successfully reported. [{csv_path}] ")
         except botocore.exceptions.ClientError as e:
             logging.error(f"Could not upload csv data to S3: {e}")

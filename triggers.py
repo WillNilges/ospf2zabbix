@@ -4,7 +4,14 @@ import time
 import weakref
 import psycopg2
 from prettytable import PrettyTable 
+from dataclasses import dataclass
 
+@dataclass
+class O2ZTriggerRow:
+    host: str
+    description: str
+    priority: int
+    count: int
 
 class O2ZTriggers:
     def __init__(self):
@@ -59,7 +66,9 @@ class O2ZTriggers:
         cursor.close()
 
         result.sort(key=lambda tup: tup[3], reverse=True)
-        self.trigger_list = result
+        self.trigger_list = []
+        for r in result:
+            self.trigger_list.append(O2ZTriggerRow(r[0], r[1], r[2], r[3]))
         return result
 
     def pretty_print_noisiest_triggers(self):
@@ -78,7 +87,7 @@ class O2ZTriggers:
             t.field_names = filter(None, title.title().split(","))
 
             # Dump triggers into this table.
-            for row in self.trigger_list:
-                t.add_row(row)
+            for r in self.trigger_list:
+                t.add_row([r.host, r.description, r.priority, r.count])
             return t
         return None
