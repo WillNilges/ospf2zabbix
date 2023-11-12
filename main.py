@@ -7,7 +7,7 @@ import socket
 from triggers import O2ZTriggers
 from bucket import O2ZBucket
 from slack import O2ZSlack
-from zabbix import O2ZZabbix
+from zabbix import NYCMESH_DEVICES, O2ZZabbix
 
 # OSPF2ZABBIX
 # A simple python program designed to fetch data from the NYC Mesh OSPF API,
@@ -110,7 +110,7 @@ def main():
             if args.ip:
                 if not is_valid_ipv4(args.ip):
                     raise ValueError("Must pass a valid IPv4 address!")
-                z.enroll_single_node(args.ip)
+                z.enroll_single_host(args.ip, NYCMESH_DEVICES["Router"])
             elif args.popular:
                 z.enroll_popular_nodes(args.popular)
             else:
@@ -120,7 +120,7 @@ def main():
             t = O2ZTriggers()
 
             t.get_noisiest_triggers(
-                z.get_or_create_hostgroup(), args.days_ago, args.leaderboard
+                z.get_or_create_hostgroup(NYCMESH_DEVICES["Router"].hostgroup), args.days_ago, args.leaderboard
             )
 
             print(t.pretty_print())
