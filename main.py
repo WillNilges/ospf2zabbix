@@ -44,6 +44,11 @@ def main():
     enroll_parser = subparsers.add_parser("enroll", help="Enroll devices into Zabbix")
     enroll_parser.add_argument("--ip", type=str, help="Enroll a node by IP")
     enroll_parser.add_argument(
+        "--device-type",
+        type=str,
+        help=f"Enroll a specific device type: {NYCMESH_DEVICES.keys()}",
+    )
+    enroll_parser.add_argument(
         "--popular",
         type=int,
         nargs="?",
@@ -110,7 +115,10 @@ def main():
             if args.ip:
                 if not is_valid_ipv4(args.ip):
                     raise ValueError("Must pass a valid IPv4 address!")
-                z.enroll_single_host(args.ip, NYCMESH_DEVICES["Router"])
+                device_params = NYCMESH_DEVICES["Router"]
+                if args.device_type:
+                    device_params = NYCMESH_DEVICES[args.device_type]
+                z.enroll_single_host(args.ip, device_params)
             elif args.popular:
                 z.enroll_popular_nodes(args.popular)
             else:
@@ -120,7 +128,9 @@ def main():
             t = O2ZTriggers()
 
             t.get_noisiest_triggers(
-                z.get_or_create_hostgroup(NYCMESH_DEVICES["Router"].hostgroup), args.days_ago, args.leaderboard
+                z.get_or_create_hostgroup(NYCMESH_DEVICES["Router"].hostgroup),
+                args.days_ago,
+                args.leaderboard,
             )
 
             print(t.pretty_print())
