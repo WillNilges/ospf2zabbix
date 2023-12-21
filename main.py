@@ -2,6 +2,7 @@
 import os
 import logging
 import argparse
+import datetime
 from dotenv import load_dotenv
 import socket
 from triggers import O2ZTriggers
@@ -27,6 +28,7 @@ def is_valid_ipv4(ip):
 
 
 def main():
+    print(datetime.datetime.now())
     load_dotenv()
     noisy_days_ago = int(os.getenv("P2Z_NOISY_DAYS_AGO", default=7))
     noisy_leaderboard = int(os.getenv("P2Z_NOISY_LEADERBOARD", default=20))
@@ -117,6 +119,7 @@ def main():
                 args.help()
 
         elif args.subcommand == "noisy-triggers":
+            logging.info("Checking noisiest triggers...")
             t = O2ZTriggers()
 
             t.get_noisiest_triggers(
@@ -126,6 +129,8 @@ def main():
             print(t.pretty_print())
 
             if args.publish or args.test_publish:
+                if not args.test_publish:
+                    logging.info("Publishing noise reports to S3...")
                 s3 = O2ZBucket()
                 pretty_publish = True if os.getenv("P2Z_S3_PRETTY") else False
                 s3.publish_noise_reports(
@@ -133,6 +138,7 @@ def main():
                 )
 
             if args.slack:
+                logging.info("Publishing noise reports to slack...")
                 slack = O2ZSlack()
                 slack.publish_noise_reports(t.trigger_list)
 
